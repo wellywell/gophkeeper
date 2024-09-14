@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,9 +12,16 @@ import (
 	"github.com/wellywell/gophkeeper/internal/db"
 )
 
+//go:generate mockery --name Database
+type Database interface {
+	GetUserHashedPassword(context.Context, string) (string, error)
+	CreateUser(context.Context, string, string) error
+	GetUserID(context.Context, string) (int, error)
+}
+
 type HandlerSet struct {
 	secret               []byte
-	database             *db.Database
+	database             Database
 }
 
 var (
@@ -21,7 +29,7 @@ var (
 	ErrAuthDataEmpty     = errors.New("login or password cannot be empty")
 )
 
-func NewHandlerSet(secret []byte, database *db.Database) *HandlerSet {
+func NewHandlerSet(secret []byte, database Database) *HandlerSet {
 	return &HandlerSet{
 		secret:               secret,
 		database:             database,
