@@ -14,7 +14,6 @@ type Claims struct {
 
 const AuthHeader = "X-Auth-Token"
 
-
 func VerifyUser(r *http.Request, secret []byte) (string, error) {
 	token := r.Header.Get(AuthHeader)
 	if token != "" {

@@ -92,7 +92,3 @@ func (d *Database) Close() error {
 	d.pool.Close()
 	return nil
 }
-
-
-
-

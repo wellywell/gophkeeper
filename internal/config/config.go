@@ -15,9 +15,9 @@ import (
 */
 
 type ServerConfig struct {
-	RunAddress           string `env:"RUN_ADDRESS"`
-	DatabaseDSN          string `env:"DATABASE_URI"`
-	Secret               []byte
+	RunAddress  string `env:"RUN_ADDRESS"`
+	DatabaseDSN string `env:"DATABASE_URI"`
+	Secret      []byte
 }
 
 func NewConfig() (*ServerConfig, error) {

@@ -20,8 +20,8 @@ type Database interface {
 }
 
 type HandlerSet struct {
-	secret               []byte
-	database             Database
+	secret   []byte
+	database Database
 }
 
 var (
@@ -31,8 +31,8 @@ var (
 
 func NewHandlerSet(secret []byte, database Database) *HandlerSet {
 	return &HandlerSet{
-		secret:               secret,
-		database:             database,
+		secret:   secret,
+		database: database,
 	}
 }
 
@@ -165,7 +165,6 @@ func (h *HandlerSet) HandleRegisterUser(w http.ResponseWriter, req *http.Request
 	}
 }
 
-
 func (h *HandlerSet) handleAuthorizeUser(w http.ResponseWriter, req *http.Request) (int, error) {
 	username, ok := auth.GetAuthenticatedUser(req)
 	if !ok {
@@ -183,5 +182,3 @@ func (h *HandlerSet) handleAuthorizeUser(w http.ResponseWriter, req *http.Reques
 	return userID, nil
 
 }
-
-
