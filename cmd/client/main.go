@@ -29,7 +29,7 @@ func main() {
 		return
 	}
 
-	token, err := authenticate(cli)
+	token, pass, err := authenticate(cli)
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -46,20 +46,20 @@ func main() {
 			fmt.Println("Bye!")
 			return
 		case prompt.ADD_RECORD:
-			addRecord(token, cli)
+			addRecord(token, pass, cli)
 		case prompt.SEE_RECORDS:
-			seeRecords(token, cli)
+			seeRecords(token, pass, cli)
 		case prompt.EDIT_RECORD:
-			editRecord(token, cli)
+			editRecord(token, pass, cli)
 		}
 	}
 }
 
-func authenticate(cli *client.Client) (string, error) {
+func authenticate(cli *client.Client) (string, string, error) {
 	authMethod, err := prompt.ChooseLoginOrRegister()
 	if err != nil {
 		fmt.Println(err.Error())
-		return "", err
+		return "", "", err
 	}
 
 	var method func(string, string) (string, error)
@@ -71,13 +71,13 @@ func authenticate(cli *client.Client) (string, error) {
 		method = cli.Register
 	default:
 		fmt.Println("Error authenticating")
-		return "", err
+		return "", "", err
 	}
 
 	return prompt.Authenticate(method)
 }
 
-func addRecord(token string, cli *client.Client) {
+func addRecord(token string, pass string, cli *client.Client) {
 	action, err := prompt.ChooseDataType()
 	if err != nil {
 		fmt.Println(err.Error())
@@ -88,11 +88,11 @@ func addRecord(token string, cli *client.Client) {
 
 }
 
-func seeRecords(token string, cli *client.Client) {
+func seeRecords(token string, pass string, cli *client.Client) {
 	fmt.Println("Unimplimented")
 }
 
-func editRecord(token string, cli *client.Client) {
+func editRecord(token string, pass string, cli *client.Client) {
 	//key, err := prompt.EnterKey()
 	fmt.Println("Unimplimented")
 }

@@ -179,7 +179,7 @@ func Menu() (string, error) {
 	return action, nil
 }
 
-func Authenticate(method func(string, string) (string, error)) (string, error) {
+func Authenticate(method func(string, string) (string, error)) (string, string, error) {
 	creds := []*survey.Question{
 		{
 			Name:     "login",
@@ -196,7 +196,9 @@ func Authenticate(method func(string, string) (string, error)) (string, error) {
 	err := survey.Ask(creds, &answers)
 	if err != nil {
 		fmt.Println(err.Error())
-		return "", err
+		return "", "", err
 	}
-	return method(answers.Login, answers.Password)
+	token, err := method(answers.Login, answers.Password)
+	return token, answers.Password, err
+
 }
