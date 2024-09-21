@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/wellywell/gophkeeper/internal/encrypt"
 	"github.com/wellywell/gophkeeper/internal/types"
 )
 
@@ -20,6 +19,12 @@ const Token = "X-Auth-Token"
 type Client struct {
 	address string
 	client  *http.Client
+}
+
+type ItemInfo struct {
+	Data []byte
+	Type types.ItemType
+	View string
 }
 
 func NewClient(addr string) (*Client, error) {
@@ -54,12 +59,12 @@ func (c *Client) Register(login string, password string) (string, error) {
 }
 
 func (c *Client) CreateLoginPasswordItem(token string, item types.LoginPasswordItem, encryptKey string) error {
-	encrypted, err := encrypt.EncryptLoginPassword(item, encryptKey)
+	err := item.Data.Encrypt(encryptKey)
 
 	if err != nil {
 		return fmt.Errorf("could not encrypt %w", err)
 	}
-	data, err := json.Marshal(encrypted)
+	data, err := json.Marshal(item)
 	if err != nil {
 		return fmt.Errorf("could not serialize data")
 	}
@@ -92,50 +97,96 @@ func (c *Client) CreateLoginPasswordItem(token string, item types.LoginPasswordI
 	return nil
 }
 
-func (c *Client) SeeRecord(token string, decriptKey string, key string) (string, error) {
+func (c *Client) GetItem(token string, key string) (data []byte, err error) {
 
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://%s/api/item/%s", c.address, key), nil)
 
 	if err != nil {
-		return "", fmt.Errorf("could not create request")
+		return nil, fmt.Errorf("could not create request")
 	}
 	req.Header.Set(Token, token)
 
 	resp, err := c.client.Do(req)
 
 	if err != nil {
-		return "", fmt.Errorf("could not make request %w", err)
+		return nil, fmt.Errorf("could not make request %w", err)
 	}
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("error fetching item %s %s", resp.Status, bodyBytes)
+		return nil, fmt.Errorf("error fetching item %s %s", resp.Status, bodyBytes)
 	}
+	return bodyBytes, nil
+}
 
-	var item types.AnyItem
-	err = json.Unmarshal(bodyBytes, &item)
+func (c *Client) DeleteItem(token string, key string) error {
+
+	req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("https://%s/api/item/%s", c.address, key), nil)
+
 	if err != nil {
-		return "", err
+		return fmt.Errorf("could not create request")
+	}
+	req.Header.Set(Token, token)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("could not make request %w", err)
+	}
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("error deleting item %s %s", resp.Status, bodyBytes)
+	}
+	return nil
+}
+
+func (c *Client) UpdateLogoPassData(token string, pass string, newItem types.LoginPasswordItem) error {
+
+	err := newItem.Data.Encrypt(pass)
+
+	if err != nil {
+		return fmt.Errorf("could not encrypt %w", err)
+	}
+	data, err := json.Marshal(newItem)
+	if err != nil {
+		return fmt.Errorf("could not serialize data")
 	}
 
-	switch item.Item.Type {
-	case types.TypeLogoPass:
-		var logopass types.LoginPasswordItem
-		err = json.Unmarshal(bodyBytes, &logopass)
-		if err != nil {
-			return "", err
-		}
-		decrypted, err := encrypt.DecryptLoginPassword(logopass, decriptKey)
-		if err != nil {
-			return "", err
-		}
-		return decrypted.String(), nil
+	req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("https://%s/api/item/login_password", c.address), bytes.NewBuffer(data))
+
+	if err != nil {
+		return fmt.Errorf("could not create request")
 	}
-	return "", nil
+	req.Header.Set(Token, token)
+
+	resp, err := c.client.Do(req)
+
+	if err != nil {
+		return fmt.Errorf("could not make request %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+
+		return fmt.Errorf("error updating item %s %s", resp.Status, bodyBytes)
+	}
+	return nil
+
 }
 
 func (c *Client) getAuthToken(login string, password string, method string) (string, error) {

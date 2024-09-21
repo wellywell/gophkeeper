@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/wellywell/gophkeeper/internal/client"
@@ -51,12 +52,20 @@ func main() {
 		case prompt.SEE_RECORDS:
 			seeRecords(token, pass, cli)
 		case prompt.SEE_RECORD:
-			err := seeRecord(token, pass, cli)
+			key, err := prompt.EnterKey("")
+			if err != nil {
+				fmt.Println(err.Error())
+				break
+			}
+			err = seeRecord(token, pass, key, cli)
 			if err != nil {
 				fmt.Println(err.Error())
 			}
 		case prompt.EDIT_RECORD:
-			editRecord(token, pass, cli)
+			err = editRecord(token, pass, cli)
+			if err != nil {
+				fmt.Println(err.Error())
+			}
 		}
 	}
 }
@@ -89,14 +98,15 @@ func addRecord(token string, pass string, cli *client.Client) {
 		fmt.Println(err.Error())
 		return
 	}
+
+	item, err := prompt.CreateBasicItem()
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
 	switch action {
 	case prompt.CREDIT_CARD:
-		item, err := CreateBasicItem()
-		if err != nil {
-			fmt.Println(err.Error())
-			return
-		}
-
 		card, err := prompt.EnterCreditCardData()
 		if err != nil {
 			fmt.Println(err.Error())
@@ -104,18 +114,13 @@ func addRecord(token string, pass string, cli *client.Client) {
 		}
 		fmt.Println(item, card)
 	case prompt.LOGIN_PASSWORD:
-		item, err := CreateBasicItem()
-		if err != nil {
-			fmt.Println(err.Error())
-			return
-		}
 		item.Type = types.TypeLogoPass
-		logopass, err := prompt.EnterLoginPassword()
+		logopass, err := prompt.EnterLoginPassword(types.LoginPassword{})
 		if err != nil {
 			fmt.Println(err.Error())
 			return
 		}
-		err = cli.CreateLoginPasswordItem(token, types.LoginPasswordItem{Item: *item, Data: *logopass}, pass)
+		err = cli.CreateLoginPasswordItem(token, types.LoginPasswordItem{Item: *item, Data: logopass}, pass)
 		if err != nil {
 			fmt.Println(err.Error())
 			return
@@ -126,34 +131,26 @@ func addRecord(token string, pass string, cli *client.Client) {
 
 }
 
-func CreateBasicItem() (*types.Item, error) {
-	key, err := prompt.EnterKey()
+func seeRecord(token string, pass string, key string, cli *client.Client) error {
+	data, err := cli.GetItem(token, key)
 	if err != nil {
-		fmt.Println(err.Error())
-		return nil, err
+		return err
 	}
-	meta, err := prompt.EnterMetadata()
-	if err != nil {
-		fmt.Println(err.Error())
-		return nil, err
-	}
-	return &types.Item{
-		Key:  key,
-		Info: meta,
-	}, nil
-}
 
-func seeRecord(token string, pass string, cli *client.Client) error {
-	key, err := prompt.EnterKey()
-	if err != nil {
-		fmt.Println(err.Error())
-		return err
-	}
-	result, err := cli.SeeRecord(token, pass, key)
+	var i types.AnyItem
+	err = json.Unmarshal(data, &i)
 	if err != nil {
 		return err
 	}
-	fmt.Println(result)
+	fmt.Println(i.Item.String())
+	switch i.Item.Type {
+	case types.TypeLogoPass:
+		logopassItem, err := types.ParseItem[*types.LoginPassword](data, pass)
+		if err != nil {
+			return err
+		}
+		fmt.Println(logopassItem.Data.String())
+	}
 	return nil
 }
 
@@ -161,7 +158,68 @@ func seeRecords(token string, pass string, cli *client.Client) {
 	fmt.Println("Unimplimented")
 }
 
-func editRecord(token string, pass string, cli *client.Client) {
-	//key, err := prompt.EnterKey()
-	fmt.Println("Unimplimented")
+func editRecord(token string, pass string, cli *client.Client) error {
+	key, err := prompt.EnterKey("")
+	if err != nil {
+		return err
+	}
+	data, err := cli.GetItem(token, key)
+	if err != nil {
+		return err
+	}
+
+	var i types.AnyItem
+	err = json.Unmarshal(data, &i)
+	if err != nil {
+		return err
+	}
+	fmt.Println(i.Item.String())
+
+	result, err := prompt.ChooseEditOrDelete()
+	if err != nil {
+		return err
+	}
+
+	switch result {
+	case prompt.DELETE:
+		err = cli.DeleteItem(token, key)
+		if err != nil {
+			return err
+		}
+		fmt.Println("Deleted")
+		return nil
+	case prompt.EDIT:
+		switch i.Item.Type {
+		case types.TypeLogoPass:
+			logopassItem, err := types.ParseItem[*types.LoginPassword](data, pass)
+			if err != nil {
+				return err
+			}
+			err = updateLogoPassData(token, pass, logopassItem, cli)
+			if err != nil {
+				fmt.Println(err.Error())
+			} else {
+				fmt.Println("success")
+			}
+		}
+	}
+	return nil
+}
+
+func updateLogoPassData(token string, pass string, logopass *types.GenericItem[*types.LoginPassword], cli *client.Client) error {
+
+	meta, err := prompt.EnterMetadata(logopass.Item.Info)
+	if err != nil {
+		return err
+	}
+	newLogoPass, err := prompt.EnterLoginPassword(*logopass.Data)
+	if err != nil {
+		return err
+	}
+	if meta == logopass.Item.Info && *newLogoPass == *logopass.Data {
+		return fmt.Errorf("nothing changed")
+	}
+	newItem := &types.LoginPasswordItem{Item: types.Item{Key: logopass.Item.Key, Info: meta}, Data: newLogoPass}
+
+	return cli.UpdateLogoPassData(token, pass, *newItem)
 }

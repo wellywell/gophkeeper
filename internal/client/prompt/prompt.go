@@ -14,7 +14,7 @@ const (
 	SEE_RECORD  = "Show a record by key"
 	SEE_RECORDS = "Show all records"
 	EDIT_RECORD = "Edit record"
-	DOWNLOAD = "Download binary data"
+	DOWNLOAD    = "Download binary data"
 	EXIT        = "Exit"
 )
 
@@ -25,10 +25,15 @@ const (
 	BINARY_DATA    = "Binary data"
 )
 
-func EnterKey() (string, error) {
+const (
+	EDIT   = "edit"
+	DELETE = "delete"
+)
+
+func EnterKey(key string) (string, error) {
 
 	var entryName string
-	err := survey.AskOne(&survey.Input{Message: "Enter unique name to your item: "}, &entryName, survey.WithValidator(survey.Required))
+	err := survey.AskOne(&survey.Input{Message: "Enter unique name of your item: ", Default: key}, &entryName, survey.WithValidator(survey.Required))
 	if err != nil {
 		fmt.Println("Error:", err)
 		return "", err
@@ -36,9 +41,9 @@ func EnterKey() (string, error) {
 	return entryName, nil
 }
 
-func EnterMetadata() (string, error) {
+func EnterMetadata(info string) (string, error) {
 	var metadata string
-	err := survey.AskOne(&survey.Input{Message: "Enter additional info: "}, &metadata)
+	err := survey.AskOne(&survey.Input{Message: "Enter additional info: ", Default: info}, &metadata)
 	if err != nil {
 		fmt.Println("Error:", err)
 		return "", err
@@ -46,12 +51,12 @@ func EnterMetadata() (string, error) {
 	return metadata, nil
 }
 
-func EnterLoginPassword() (*types.LoginPassword, error) {
+func EnterLoginPassword(item types.LoginPassword) (*types.LoginPassword, error) {
 
 	creds := []*survey.Question{
 		{
 			Name:     "login",
-			Prompt:   &survey.Input{Message: "Login: "},
+			Prompt:   &survey.Input{Message: "Login: ", Default: item.Login},
 			Validate: survey.Required,
 		},
 		{
@@ -154,6 +159,22 @@ func ChooseLoginOrRegister() (string, error) {
 	return authType, nil
 }
 
+func ChooseEditOrDelete() (string, error) {
+
+	var action string
+
+	err := survey.AskOne(&survey.Select{
+		Message: "Would you like to edit or delete item?",
+		Options: []string{EDIT, DELETE},
+		Default: EDIT,
+	}, &action)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return "", err
+	}
+	return action, nil
+}
+
 func Menu() (string, error) {
 
 	var action string
@@ -192,4 +213,21 @@ func Authenticate(method func(string, string) (string, error)) (string, string, 
 	token, err := method(answers.Login, answers.Password)
 	return token, answers.Password, err
 
+}
+
+func CreateBasicItem() (*types.Item, error) {
+	key, err := EnterKey("")
+	if err != nil {
+		fmt.Println(err.Error())
+		return nil, err
+	}
+	meta, err := EnterMetadata("")
+	if err != nil {
+		fmt.Println(err.Error())
+		return nil, err
+	}
+	return &types.Item{
+		Key:  key,
+		Info: meta,
+	}, nil
 }

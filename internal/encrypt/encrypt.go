@@ -6,8 +6,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"strings"
-
-	"github.com/wellywell/gophkeeper/internal/types"
 )
 
 var bytes = []byte{35, 46, 57, 24, 85, 35, 24, 74, 87, 35, 88, 98, 66, 32, 14, 05}
@@ -68,38 +66,4 @@ func Decrypt(text, MySecret string) (string, error) {
 	plainText := make([]byte, len(cipherText))
 	cfb.XORKeyStream(plainText, cipherText)
 	return string(plainText), nil
-}
-
-func EncryptLoginPassword(logopass types.LoginPasswordItem, key string) (*types.LoginPasswordItem, error) {
-	lg, err := Encrypt(logopass.Data.Login, key)
-
-	if err != nil {
-		return nil, err
-	}
-	psswd, err := Encrypt(logopass.Data.Password, key)
-
-	if err != nil {
-		return nil, err
-	}
-	logopass.Data.Login = lg
-	logopass.Data.Password = psswd
-
-	return &logopass, nil
-}
-
-func DecryptLoginPassword(logopass types.LoginPasswordItem, key string) (*types.LoginPasswordItem, error) {
-	lg, err := Decrypt(logopass.Data.Login, key)
-
-	if err != nil {
-		return nil, err
-	}
-	psswd, err := Decrypt(logopass.Data.Password, key)
-
-	if err != nil {
-		return nil, err
-	}
-	logopass.Data.Login = lg
-	logopass.Data.Password = psswd
-
-	return &logopass, nil
 }

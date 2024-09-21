@@ -134,6 +134,52 @@ func (d *Database) InsertLogoPass(ctx context.Context, userID int, data types.Lo
 	return nil
 }
 
+func (d *Database) UpdateLogoPass(ctx context.Context, userID int, data types.LoginPasswordItem) error {
+
+	query := `
+		UPDATE item
+		SET info = $1
+		WHERE key = $2 AND user_id = $3
+		RETURNING id `
+
+	tx, err := d.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+
+	defer func() {
+		err = tx.Rollback(ctx)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+	}()
+
+	row := tx.QueryRow(ctx, query, data.Item.Info, data.Item.Key, userID)
+
+	var itemID int
+	if err := row.Scan(&itemID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("%w", &KeyNotFoundError{Key: data.Item.Key})
+		}
+		return fmt.Errorf("unexpected db error %w", err)
+	}
+	query = `
+		UPDATE logopass
+		SET login = $1, password = $2
+		WHERE item_id = $3
+	`
+	_, err = tx.Exec(ctx, query, data.Data.Login, data.Data.Password, itemID)
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+	return nil
+}
+
 func (d *Database) InsertCreditCard(ctx context.Context, userID int, key string, card types.CreditCardData, meta string) error {
 	return nil
 }
@@ -147,10 +193,15 @@ func (d *Database) InsertBinaryData(ctx context.Context, userID int, key string,
 }
 
 func (d *Database) DeleteItem(ctx context.Context, userID int, key string) error {
-	return nil
-}
+	query := `
+		DELETE FROM item
+		WHERE user_id = $1 and key = $2
+	`
+	_, err := d.pool.Exec(ctx, query, userID, key)
 
-func (d *Database) UpdateLogoPass(ctx context.Context, userID int, key string, logopass types.LoginPassword, meta string) error {
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

@@ -21,6 +21,8 @@ type Database interface {
 	InsertLogoPass(context.Context, int, types.LoginPasswordItem) error
 	GetItem(context.Context, int, string) (*types.Item, error)
 	GetLogoPass(context.Context, int) (*types.LoginPassword, error)
+	DeleteItem(context.Context, int, string) error
+	UpdateLogoPass(context.Context, int, types.LoginPasswordItem) error
 }
 
 type HandlerSet struct {
@@ -169,6 +171,46 @@ func (h *HandlerSet) HandleRegisterUser(w http.ResponseWriter, req *http.Request
 	}
 }
 
+func (h *HandlerSet) prepareLoginAndPasswordItem(w http.ResponseWriter, req *http.Request) (*types.LoginPasswordItem, error) {
+
+	var logopass *types.LoginPasswordItem
+
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		http.Error(w, "Something went wrong",
+			http.StatusUnauthorized)
+		return nil, err
+	}
+	err = json.Unmarshal(body, &logopass)
+
+	if err != nil {
+		http.Error(w, "Could not unmarshal body",
+			http.StatusBadRequest)
+		return nil, err
+	}
+	return logopass, nil
+}
+
+func (h *HandlerSet) HandleUpdateLoginAndPassword(w http.ResponseWriter, req *http.Request) {
+	userID, err := h.handleAuthorizeUser(w, req)
+	if err != nil {
+		http.Error(w, "Error authenticating",
+			http.StatusUnauthorized)
+	}
+	logopass, err := h.prepareLoginAndPasswordItem(w, req)
+	if err != nil {
+		return
+	}
+	err = h.database.UpdateLogoPass(req.Context(), userID, *logopass)
+
+	if err != nil {
+		fmt.Println(err.Error())
+		http.Error(w, "Could not update",
+			http.StatusInternalServerError)
+		return
+	}
+}
+
 func (h *HandlerSet) HandleStoreLoginAndPassword(w http.ResponseWriter, req *http.Request) {
 
 	userID, err := h.handleAuthorizeUser(w, req)
@@ -178,22 +220,10 @@ func (h *HandlerSet) HandleStoreLoginAndPassword(w http.ResponseWriter, req *htt
 			http.StatusUnauthorized)
 	}
 
-	var logopass *types.LoginPasswordItem
-
-	body, err := io.ReadAll(req.Body)
+	logopass, err := h.prepareLoginAndPasswordItem(w, req)
 	if err != nil {
-		http.Error(w, "Something went wrong",
-			http.StatusUnauthorized)
 		return
 	}
-	err = json.Unmarshal(body, &logopass)
-
-	if err != nil {
-		http.Error(w, "Could not unmarshal body",
-			http.StatusBadRequest)
-		return
-	}
-
 	err = h.database.InsertLogoPass(req.Context(), userID, *logopass)
 
 	if err != nil {
@@ -243,7 +273,7 @@ func (h *HandlerSet) HandleGetItem(w http.ResponseWriter, req *http.Request) {
 			http.Error(w, "Something went wrong", http.StatusInternalServerError)
 			return
 		}
-		result := types.LoginPasswordItem{Item: *item, Data: *logopass}
+		result := types.LoginPasswordItem{Item: *item, Data: logopass}
 		data, err = json.Marshal(result)
 		if err != nil {
 			http.Error(w, "Something went wrong", http.StatusInternalServerError)
@@ -255,6 +285,30 @@ func (h *HandlerSet) HandleGetItem(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		http.Error(w, "Something went wrong",
 			http.StatusInternalServerError)
+	}
+}
+
+func (h *HandlerSet) HandleDeleteItem(w http.ResponseWriter, req *http.Request) {
+
+	userID, err := h.handleAuthorizeUser(w, req)
+
+	if err != nil {
+		http.Error(w, "Something went wrong",
+			http.StatusUnauthorized)
+	}
+
+	idString := req.PathValue("key")
+
+	if idString == "" {
+		http.Error(w, "Key not passed", http.StatusBadRequest)
+		return
+	}
+	err = h.database.DeleteItem(req.Context(), userID, idString)
+
+	if err != nil {
+		http.Error(w, "Something went wrong",
+			http.StatusInternalServerError)
+		return
 	}
 }
 
