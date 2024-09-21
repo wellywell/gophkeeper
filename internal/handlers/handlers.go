@@ -10,6 +10,7 @@ import (
 
 	"github.com/wellywell/gophkeeper/internal/auth"
 	"github.com/wellywell/gophkeeper/internal/db"
+	"github.com/wellywell/gophkeeper/internal/types"
 )
 
 //go:generate mockery --name Database
@@ -17,6 +18,9 @@ type Database interface {
 	GetUserHashedPassword(context.Context, string) (string, error)
 	CreateUser(context.Context, string, string) error
 	GetUserID(context.Context, string) (int, error)
+	InsertLogoPass(context.Context, int, types.LoginPasswordItem) error
+	GetItem(context.Context, int, string) (*types.Item, error)
+	GetLogoPass(context.Context, int) (*types.LoginPassword, error)
 }
 
 type HandlerSet struct {
@@ -159,6 +163,95 @@ func (h *HandlerSet) HandleRegisterUser(w http.ResponseWriter, req *http.Request
 	w.Header().Set("Content-Type", "text/plain")
 
 	_, err = w.Write([]byte("success"))
+	if err != nil {
+		http.Error(w, "Something went wrong",
+			http.StatusInternalServerError)
+	}
+}
+
+func (h *HandlerSet) HandleStoreLoginAndPassword(w http.ResponseWriter, req *http.Request) {
+
+	userID, err := h.handleAuthorizeUser(w, req)
+
+	if err != nil {
+		http.Error(w, "Something went wrong",
+			http.StatusUnauthorized)
+	}
+
+	var logopass *types.LoginPasswordItem
+
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		http.Error(w, "Something went wrong",
+			http.StatusUnauthorized)
+		return
+	}
+	err = json.Unmarshal(body, &logopass)
+
+	if err != nil {
+		http.Error(w, "Could not unmarshal body",
+			http.StatusBadRequest)
+		return
+	}
+
+	err = h.database.InsertLogoPass(req.Context(), userID, *logopass)
+
+	if err != nil {
+		fmt.Println(err.Error())
+		http.Error(w, "Something went wrong",
+			http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+}
+
+func (h *HandlerSet) HandleGetItem(w http.ResponseWriter, req *http.Request) {
+
+	userID, err := h.handleAuthorizeUser(w, req)
+
+	if err != nil {
+		http.Error(w, "Something went wrong",
+			http.StatusUnauthorized)
+	}
+
+	idString := req.PathValue("key")
+
+	if idString == "" {
+		http.Error(w, "Key not passed", http.StatusBadRequest)
+		return
+	}
+	item, err := h.database.GetItem(req.Context(), userID, idString)
+
+	if err != nil {
+		var keyNotFound *db.KeyNotFoundError
+		if errors.As(err, &keyNotFound) {
+			http.Error(w, "Not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Something went wrong",
+			http.StatusInternalServerError)
+		return
+	}
+
+	var data []byte
+
+	switch item.Type {
+	case types.TypeLogoPass:
+		logopass, err := h.database.GetLogoPass(req.Context(), item.Id)
+		if err != nil {
+			http.Error(w, "Something went wrong", http.StatusInternalServerError)
+			return
+		}
+		result := types.LoginPasswordItem{Item: *item, Data: *logopass}
+		data, err = json.Marshal(result)
+		if err != nil {
+			http.Error(w, "Something went wrong", http.StatusInternalServerError)
+			return
+		}
+	}
+	w.Header().Set("content-type", "application/json")
+	_, err = w.Write(data)
 	if err != nil {
 		http.Error(w, "Something went wrong",
 			http.StatusInternalServerError)

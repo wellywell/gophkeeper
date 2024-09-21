@@ -6,6 +6,7 @@ import (
 	"github.com/wellywell/gophkeeper/internal/client"
 	"github.com/wellywell/gophkeeper/internal/client/prompt"
 	"github.com/wellywell/gophkeeper/internal/config"
+	"github.com/wellywell/gophkeeper/internal/types"
 )
 
 var (
@@ -49,6 +50,11 @@ func main() {
 			addRecord(token, pass, cli)
 		case prompt.SEE_RECORDS:
 			seeRecords(token, pass, cli)
+		case prompt.SEE_RECORD:
+			err := seeRecord(token, pass, cli)
+			if err != nil {
+				fmt.Println(err.Error())
+			}
 		case prompt.EDIT_RECORD:
 			editRecord(token, pass, cli)
 		}
@@ -83,9 +89,72 @@ func addRecord(token string, pass string, cli *client.Client) {
 		fmt.Println(err.Error())
 		return
 	}
-	fmt.Println(action)
-	fmt.Println("Unimplimented")
+	switch action {
+	case prompt.CREDIT_CARD:
+		item, err := CreateBasicItem()
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
 
+		card, err := prompt.EnterCreditCardData()
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
+		fmt.Println(item, card)
+	case prompt.LOGIN_PASSWORD:
+		item, err := CreateBasicItem()
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
+		item.Type = types.TypeLogoPass
+		logopass, err := prompt.EnterLoginPassword()
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
+		err = cli.CreateLoginPasswordItem(token, types.LoginPasswordItem{Item: *item, Data: *logopass}, pass)
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		} else {
+			fmt.Println("saved")
+		}
+	}
+
+}
+
+func CreateBasicItem() (*types.Item, error) {
+	key, err := prompt.EnterKey()
+	if err != nil {
+		fmt.Println(err.Error())
+		return nil, err
+	}
+	meta, err := prompt.EnterMetadata()
+	if err != nil {
+		fmt.Println(err.Error())
+		return nil, err
+	}
+	return &types.Item{
+		Key:  key,
+		Info: meta,
+	}, nil
+}
+
+func seeRecord(token string, pass string, cli *client.Client) error {
+	key, err := prompt.EnterKey()
+	if err != nil {
+		fmt.Println(err.Error())
+		return err
+	}
+	result, err := cli.SeeRecord(token, pass, key)
+	if err != nil {
+		return err
+	}
+	fmt.Println(result)
+	return nil
 }
 
 func seeRecords(token string, pass string, cli *client.Client) {

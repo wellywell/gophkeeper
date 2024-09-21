@@ -4,14 +4,17 @@ import (
 	"fmt"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/wellywell/gophkeeper/internal/types"
 )
 
 const (
 	REGISTER    = "register"
 	LOGIN       = "login"
 	ADD_RECORD  = "Add a record"
-	SEE_RECORDS = "See my records"
+	SEE_RECORD  = "Show a record by key"
+	SEE_RECORDS = "Show all records"
 	EDIT_RECORD = "Edit record"
+	DOWNLOAD = "Download binary data"
 	EXIT        = "Exit"
 )
 
@@ -21,18 +24,6 @@ const (
 	TEXT           = "Some text"
 	BINARY_DATA    = "Binary data"
 )
-
-type CreditCardData struct {
-	Number string
-	Valid  string
-	Name   string
-	CVC    string
-}
-
-type LoginPassword struct {
-	Login    string
-	Password string
-}
 
 func EnterKey() (string, error) {
 
@@ -55,7 +46,7 @@ func EnterMetadata() (string, error) {
 	return metadata, nil
 }
 
-func EnterLoginPassword() (*LoginPassword, error) {
+func EnterLoginPassword() (*types.LoginPassword, error) {
 
 	creds := []*survey.Question{
 		{
@@ -68,7 +59,7 @@ func EnterLoginPassword() (*LoginPassword, error) {
 			Prompt:   &survey.Password{Message: "Password: "},
 			Validate: survey.Required,
 		}}
-	answers := LoginPassword{}
+	answers := types.LoginPassword{}
 
 	err := survey.Ask(creds, &answers)
 	if err != nil {
@@ -98,11 +89,11 @@ func EnterFile() (string, error) {
 	return file, nil
 }
 
-func EnterCreditCardData() (*CreditCardData, error) {
+func EnterCreditCardData() (*types.CreditCardData, error) {
 	creds := []*survey.Question{
 		{
 			Name:     "Number",
-			Prompt:   &survey.Input{Message: "Card number: "},
+			Prompt:   &survey.Input{Message: "Card number: ", Default: "111"},
 			Validate: survey.Required,
 		},
 		{
@@ -121,7 +112,7 @@ func EnterCreditCardData() (*CreditCardData, error) {
 			Validate: survey.Required,
 		},
 	}
-	answers := CreditCardData{}
+	answers := types.CreditCardData{}
 
 	err := survey.Ask(creds, &answers)
 	if err != nil {
@@ -169,7 +160,7 @@ func Menu() (string, error) {
 
 	err := survey.AskOne(&survey.Select{
 		Message: "What do you want to do?",
-		Options: []string{ADD_RECORD, SEE_RECORDS, EDIT_RECORD, EXIT},
+		Options: []string{ADD_RECORD, SEE_RECORDS, SEE_RECORD, EDIT_RECORD, EXIT},
 		Default: ADD_RECORD,
 	}, &action)
 	if err != nil {
@@ -191,7 +182,7 @@ func Authenticate(method func(string, string) (string, error)) (string, string, 
 			Prompt:   &survey.Password{Message: "Password: "},
 			Validate: survey.Required,
 		}}
-	answers := LoginPassword{}
+	answers := types.LoginPassword{}
 
 	err := survey.Ask(creds, &answers)
 	if err != nil {

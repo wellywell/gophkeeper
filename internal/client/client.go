@@ -10,7 +10,12 @@ import (
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/wellywell/gophkeeper/internal/encrypt"
+	"github.com/wellywell/gophkeeper/internal/types"
 )
+
+const Token = "X-Auth-Token"
 
 type Client struct {
 	address string
@@ -48,6 +53,91 @@ func (c *Client) Register(login string, password string) (string, error) {
 	return c.getAuthToken(login, password, "register")
 }
 
+func (c *Client) CreateLoginPasswordItem(token string, item types.LoginPasswordItem, encryptKey string) error {
+	encrypted, err := encrypt.EncryptLoginPassword(item, encryptKey)
+
+	if err != nil {
+		return fmt.Errorf("could not encrypt %w", err)
+	}
+	data, err := json.Marshal(encrypted)
+	if err != nil {
+		return fmt.Errorf("could not serialize data")
+	}
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://%s/api/item/login_password", c.address), bytes.NewBuffer(data))
+
+	if err != nil {
+		return fmt.Errorf("could not create request")
+	}
+	req.Header.Set(Token, token)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.client.Do(req)
+
+	if err != nil {
+		return fmt.Errorf("could not make request %w", err)
+	}
+
+	if resp.StatusCode != http.StatusCreated {
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+
+		return fmt.Errorf("error creating item %s %s", resp.Status, bodyBytes)
+	}
+	return nil
+}
+
+func (c *Client) SeeRecord(token string, decriptKey string, key string) (string, error) {
+
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://%s/api/item/%s", c.address, key), nil)
+
+	if err != nil {
+		return "", fmt.Errorf("could not create request")
+	}
+	req.Header.Set(Token, token)
+
+	resp, err := c.client.Do(req)
+
+	if err != nil {
+		return "", fmt.Errorf("could not make request %w", err)
+	}
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("error fetching item %s %s", resp.Status, bodyBytes)
+	}
+
+	var item types.AnyItem
+	err = json.Unmarshal(bodyBytes, &item)
+	if err != nil {
+		return "", err
+	}
+
+	switch item.Item.Type {
+	case types.TypeLogoPass:
+		var logopass types.LoginPasswordItem
+		err = json.Unmarshal(bodyBytes, &logopass)
+		if err != nil {
+			return "", err
+		}
+		decrypted, err := encrypt.DecryptLoginPassword(logopass, decriptKey)
+		if err != nil {
+			return "", err
+		}
+		return decrypted.String(), nil
+	}
+	return "", nil
+}
+
 func (c *Client) getAuthToken(login string, password string, method string) (string, error) {
 
 	data := struct {
@@ -80,7 +170,7 @@ func (c *Client) getAuthToken(login string, password string, method string) (str
 		return "", fmt.Errorf("not authenticated")
 	}
 
-	token := resp.Header.Get("X-Auth-Token")
+	token := resp.Header.Get(Token)
 	if token == "" {
 		return "", fmt.Errorf("empty token")
 	}

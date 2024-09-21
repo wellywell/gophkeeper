@@ -41,6 +41,8 @@ func NewServer(conf config.ServerConfig, h handlers.HandlerSet, middlewares ...M
 
 	r.Group(func(r chi.Router) {
 		r.Use(authMiddleware.Handle)
+		r.Post("/api/item/login_password", h.HandleStoreLoginAndPassword)
+		r.Get("/api/item/{key}", h.HandleGetItem)
 	})
 
 	return &Server{server: http.Server{Addr: conf.RunAddress, Handler: r}, config: conf}
