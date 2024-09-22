@@ -130,6 +130,34 @@ func (l *LoginPassword) String() string {
 	return fmt.Sprintf("\nLogin: %s\nPassword: %s\n", l.Login, l.Password)
 }
 
+type TextData string
+
+func (t *TextData) Encrypt(key string) error {
+	enc, err := encrypt.Encrypt(string(*t), key)
+
+	if err != nil {
+		return err
+	}
+
+	*t = TextData(enc)
+	return nil
+}
+
+func (t *TextData) Decrypt(key string) error {
+	enc, err := encrypt.Decrypt(string(*t), key)
+
+	if err != nil {
+		return err
+	}
+
+	*t = TextData(enc)
+	return nil
+}
+
+func (t *TextData) String() string {
+	return fmt.Sprintf("%s\n", string(*t))
+}
+
 type CreditCardItem struct {
 	Item Item            `json:"item"`
 	Data *CreditCardData `json:"data"`
@@ -140,8 +168,8 @@ type LoginPasswordItem struct {
 }
 
 type TextItem struct {
-	Item Item   `json:"item"`
-	Data string `json:"data"`
+	Item Item     `json:"item"`
+	Data TextData `json:"data"`
 }
 
 type BinaryItem struct {
@@ -155,7 +183,7 @@ type AnyItem struct {
 }
 
 type ItemData interface {
-	*LoginPassword | *CreditCardData | ~string | ~[]byte
+	*LoginPassword | *CreditCardData | *TextData | ~[]byte
 	String() string
 	Encrypt(string) error
 	Decrypt(string) error

@@ -76,14 +76,14 @@ func EnterLoginPassword(item types.LoginPassword) (*types.LoginPassword, error) 
 	return &answers, nil
 }
 
-func EnterText() (string, error) {
+func EnterText(defaultText string) (types.TextData, error) {
 	var text string
-	err := survey.AskOne(&survey.Input{Message: "Enter the text data: "}, &text)
+	err := survey.AskOne(&survey.Input{Message: "Enter the text data: ", Default: defaultText}, &text)
 	if err != nil {
 		fmt.Println("Error:", err)
 		return "", err
 	}
-	return text, nil
+	return types.TextData(text), nil
 }
 
 func EnterFile() (string, error) {

@@ -128,6 +128,37 @@ func (d *Database) UpdateItem(ctx context.Context, tx pgx.Tx, userID int, item t
 	return itemID, nil
 }
 
+func (d *Database) InsertText(ctx context.Context, userID int, item types.TextItem) error {
+	tx, err := d.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+	defer func() {
+		err = tx.Rollback(ctx)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+	}()
+	itemID, err := d.InsertItem(ctx, tx, userID, types.Item{Key: item.Item.Key, Type: types.TypeText, Info: item.Item.Info})
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+	query := `
+		INSERT INTO text_data (item_id, data)
+		VALUES ($1, $2)
+	`
+	_, err = tx.Exec(ctx, query, itemID, item.Data)
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+	return nil
+}
+
 func (d *Database) InsertCreditCard(ctx context.Context, userID int, item types.CreditCardItem) error {
 	tx, err := d.pool.Begin(ctx)
 	if err != nil {
@@ -261,7 +292,37 @@ func (d *Database) UpdateCreditCard(ctx context.Context, userID int, data types.
 	return nil
 }
 
-func (d *Database) InsertTextData(ctx context.Context, userID int, key string, text string, meta string) error {
+func (d *Database) UpdateText(ctx context.Context, userID int, data types.TextItem) error {
+	tx, err := d.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+
+	defer func() {
+		err = tx.Rollback(ctx)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+	}()
+
+	itemID, err := d.UpdateItem(ctx, tx, userID, data.Item)
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+	query := `
+		UPDATE text_data
+		SET data = $1
+		WHERE item_id = $2
+	`
+	_, err = tx.Exec(ctx, query, data.Data, itemID)
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
 	return nil
 }
 
@@ -350,6 +411,24 @@ func (d *Database) GetCreditCard(ctx context.Context, itemID int) (*types.Credit
 	item.ValidMonth = strconv.Itoa(int(item.ValidDate.Month()))
 	item.ValidYear = strconv.Itoa(item.ValidDate.Year())
 	return &item, nil
+}
+
+func (d *Database) GetText(ctx context.Context, itemID int) (*types.TextData, error) {
+	query := `
+		SELECT data
+		FROM text_data
+		WHERE item_id = $1
+	`
+
+	row := d.pool.QueryRow(ctx, query, itemID)
+
+	var text types.TextData
+
+	err := row.Scan(&text)
+	if err != nil {
+		return nil, fmt.Errorf("%w", err)
+	}
+	return &text, nil
 }
 
 func (d *Database) GetAllItems(ctx context.Context, userID int) ([]types.Item, error) {

@@ -58,82 +58,43 @@ func (c *Client) Register(login string, password string) (string, error) {
 	return c.getAuthToken(login, password, "register")
 }
 
-func (c *Client) CreateLoginPasswordItem(token string, item types.LoginPasswordItem, encryptKey string) error {
-	err := item.Data.Encrypt(encryptKey)
+func (c *Client) CreateLoginPasswordItem(token string, data []byte) (*http.Response, error) {
 
-	if err != nil {
-		return fmt.Errorf("could not encrypt %w", err)
-	}
-	data, err := json.Marshal(item)
-	if err != nil {
-		return fmt.Errorf("could not serialize data")
-	}
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://%s/api/item/login_password", c.address), bytes.NewBuffer(data))
 
 	if err != nil {
-		return fmt.Errorf("could not create request")
+		return nil, fmt.Errorf("could not create request")
 	}
 	req.Header.Set(Token, token)
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := c.client.Do(req)
-
-	if err != nil {
-		return fmt.Errorf("could not make request %w", err)
-	}
-
-	if resp.StatusCode != http.StatusCreated {
-		bodyBytes, err := io.ReadAll(resp.Body)
-		if err != nil {
-			log.Fatal(err)
-		}
-		if err != nil {
-			return err
-		}
-		defer resp.Body.Close()
-
-		return fmt.Errorf("error creating item %s %s", resp.Status, bodyBytes)
-	}
-	return nil
+	return c.client.Do(req)
 }
 
-func (c *Client) CreateCreditCardItem(token string, item types.CreditCardItem, encryptKey string) error {
-	err := item.Data.Encrypt(encryptKey)
-
-	if err != nil {
-		return fmt.Errorf("could not encrypt %w", err)
-	}
-	data, err := json.Marshal(item)
-	if err != nil {
-		return fmt.Errorf("could not serialize data")
-	}
+func (c *Client) CreateCreditCardItem(token string, data []byte) (*http.Response, error) {
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://%s/api/item/credit_card", c.address), bytes.NewBuffer(data))
 
 	if err != nil {
-		return fmt.Errorf("could not create request")
+		return nil, fmt.Errorf("could not create request")
 	}
 	req.Header.Set(Token, token)
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := c.client.Do(req)
+	return c.client.Do(req)
+
+}
+
+func (c *Client) CreateTextItem(token string, data []byte) (*http.Response, error) {
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://%s/api/item/text", c.address), bytes.NewBuffer(data))
 
 	if err != nil {
-		return fmt.Errorf("could not make request %w", err)
+		return nil, fmt.Errorf("could not create request")
 	}
+	req.Header.Set(Token, token)
+	req.Header.Set("Content-Type", "application/json")
 
-	if resp.StatusCode != http.StatusCreated {
-		bodyBytes, err := io.ReadAll(resp.Body)
-		if err != nil {
-			log.Fatal(err)
-		}
-		if err != nil {
-			return err
-		}
-		defer resp.Body.Close()
+	return c.client.Do(req)
 
-		return fmt.Errorf("error creating item %s %s", resp.Status, bodyBytes)
-	}
-	return nil
 }
 
 func (c *Client) GetItem(token string, key string) (data []byte, err error) {
@@ -199,42 +160,20 @@ func (c *Client) UpdateLogoPassData(token string, data []byte) (*http.Response, 
 	return c.client.Do(req)
 }
 
-func UpdateItem[T types.ItemData](token string, pass string, newItem types.GenericItem[T], method func(string, []byte) (*http.Response, error)) error {
-	err := newItem.Data.Encrypt(pass)
-
-	if err != nil {
-		return fmt.Errorf("could not encrypt %w", err)
-	}
-	data, err := json.Marshal(newItem)
-	if err != nil {
-		return fmt.Errorf("could not serialize data")
-	}
-
-	resp, err := method(token, data)
-
-	if err != nil {
-		return fmt.Errorf("could not make request %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		bodyBytes, err := io.ReadAll(resp.Body)
-		if err != nil {
-			log.Fatal(err)
-		}
-		if err != nil {
-			return err
-		}
-		defer resp.Body.Close()
-
-		return fmt.Errorf("error updating item %s %s", resp.Status, bodyBytes)
-	}
-	return nil
-
-}
-
 func (c *Client) UpdateCreditCardData(token string, data []byte) (*http.Response, error) {
 
 	req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("https://%s/api/item/credit_card", c.address), bytes.NewBuffer(data))
+
+	if err != nil {
+		return nil, fmt.Errorf("could not create request")
+	}
+	req.Header.Set(Token, token)
+	return c.client.Do(req)
+}
+
+func (c *Client) UpdateTextData(token string, data []byte) (*http.Response, error) {
+
+	req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("https://%s/api/item/text", c.address), bytes.NewBuffer(data))
 
 	if err != nil {
 		return nil, fmt.Errorf("could not create request")
@@ -280,4 +219,61 @@ func (c *Client) getAuthToken(login string, password string, method string) (str
 		return "", fmt.Errorf("empty token")
 	}
 	return token, nil
+}
+
+func saveItem[T types.ItemData](token string, pass string, newItem types.GenericItem[T], method func(string, []byte) (*http.Response, error)) (*http.Response, error) {
+	err := newItem.Data.Encrypt(pass)
+
+	if err != nil {
+		return nil, fmt.Errorf("could not encrypt %w", err)
+	}
+	data, err := json.Marshal(newItem)
+	if err != nil {
+		return nil, fmt.Errorf("could not serialize data")
+	}
+	return method(token, data)
+}
+
+func UpdateItem[T types.ItemData](token string, pass string, newItem types.GenericItem[T], method func(string, []byte) (*http.Response, error)) error {
+
+	resp, err := saveItem(token, pass, newItem, method)
+
+	if err != nil {
+		return fmt.Errorf("could not make request %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+
+		return fmt.Errorf("error updating item %s %s", resp.Status, bodyBytes)
+	}
+	return nil
+}
+
+func CreateItem[T types.ItemData](token string, pass string, newItem types.GenericItem[T], method func(string, []byte) (*http.Response, error)) error {
+	resp, err := saveItem(token, pass, newItem, method)
+
+	if err != nil {
+		return fmt.Errorf("could not make request %w", err)
+	}
+
+	if resp.StatusCode != http.StatusCreated {
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+
+		return fmt.Errorf("error creating item %s %s", resp.Status, bodyBytes)
+	}
+	return nil
 }

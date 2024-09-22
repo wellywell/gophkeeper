@@ -20,12 +20,15 @@ type Database interface {
 	GetUserID(context.Context, string) (int, error)
 	InsertLogoPass(context.Context, int, types.LoginPasswordItem) error
 	InsertCreditCard(context.Context, int, types.CreditCardItem) error
+	InsertText(context.Context, int, types.TextItem) error
 	GetItem(context.Context, int, string) (*types.Item, error)
 	GetLogoPass(context.Context, int) (*types.LoginPassword, error)
 	GetCreditCard(context.Context, int) (*types.CreditCardData, error)
+	GetText(context.Context, int) (*types.TextData, error)
 	DeleteItem(context.Context, int, string) error
 	UpdateLogoPass(context.Context, int, types.LoginPasswordItem) error
 	UpdateCreditCard(context.Context, int, types.CreditCardItem) error
+	UpdateText(context.Context, int, types.TextItem) error
 }
 
 type HandlerSet struct {
@@ -174,46 +177,6 @@ func (h *HandlerSet) HandleRegisterUser(w http.ResponseWriter, req *http.Request
 	}
 }
 
-func (h *HandlerSet) prepareLoginAndPasswordItem(w http.ResponseWriter, req *http.Request) (*types.LoginPasswordItem, error) {
-
-	var logopass *types.LoginPasswordItem
-
-	body, err := io.ReadAll(req.Body)
-	if err != nil {
-		http.Error(w, "Something went wrong",
-			http.StatusUnauthorized)
-		return nil, err
-	}
-	err = json.Unmarshal(body, &logopass)
-
-	if err != nil {
-		http.Error(w, "Could not unmarshal body",
-			http.StatusBadRequest)
-		return nil, err
-	}
-	return logopass, nil
-}
-
-func (h *HandlerSet) prepareCreditCardItem(w http.ResponseWriter, req *http.Request) (*types.CreditCardItem, error) {
-
-	var card *types.CreditCardItem
-
-	body, err := io.ReadAll(req.Body)
-	if err != nil {
-		http.Error(w, "Something went wrong",
-			http.StatusUnauthorized)
-		return nil, err
-	}
-	err = json.Unmarshal(body, &card)
-
-	if err != nil {
-		http.Error(w, "Could not unmarshal body",
-			http.StatusBadRequest)
-		return nil, err
-	}
-	return card, nil
-}
-
 func (h *HandlerSet) HandleUpdateLoginAndPassword(w http.ResponseWriter, req *http.Request) {
 	userID, err := h.handleAuthorizeUser(w, req)
 	if err != nil {
@@ -268,6 +231,54 @@ func (h *HandlerSet) HandleStoreLoginAndPassword(w http.ResponseWriter, req *htt
 		return
 	}
 	err = h.database.InsertLogoPass(req.Context(), userID, *logopass)
+
+	if err != nil {
+		fmt.Println(err.Error())
+		http.Error(w, "Something went wrong",
+			http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+}
+
+func (h *HandlerSet) HandleUpdateText(w http.ResponseWriter, req *http.Request) {
+
+	userID, err := h.handleAuthorizeUser(w, req)
+
+	if err != nil {
+		http.Error(w, "Something went wrong",
+			http.StatusUnauthorized)
+	}
+
+	text, err := h.prepareTextItem(w, req)
+	if err != nil {
+		return
+	}
+	err = h.database.UpdateText(req.Context(), userID, *text)
+
+	if err != nil {
+		fmt.Println(err.Error())
+		http.Error(w, "Something went wrong",
+			http.StatusInternalServerError)
+		return
+	}
+}
+
+func (h *HandlerSet) HandleStoreText(w http.ResponseWriter, req *http.Request) {
+
+	userID, err := h.handleAuthorizeUser(w, req)
+
+	if err != nil {
+		http.Error(w, "Something went wrong",
+			http.StatusUnauthorized)
+	}
+
+	text, err := h.prepareTextItem(w, req)
+	if err != nil {
+		return
+	}
+	err = h.database.InsertText(req.Context(), userID, *text)
 
 	if err != nil {
 		fmt.Println(err.Error())
@@ -361,6 +372,21 @@ func (h *HandlerSet) HandleGetItem(w http.ResponseWriter, req *http.Request) {
 			http.Error(w, "Something went wrong", http.StatusInternalServerError)
 			return
 		}
+	case types.TypeText:
+		text, err := h.database.GetText(req.Context(), item.Id)
+		fmt.Println(item.Id)
+		if err != nil {
+			fmt.Println(err.Error())
+			http.Error(w, "Something went wrong", http.StatusInternalServerError)
+			return
+		}
+		result := types.TextItem{Item: *item, Data: *text}
+		data, err = json.Marshal(result)
+		if err != nil {
+			fmt.Println(err.Error())
+			http.Error(w, "Something went wrong", http.StatusInternalServerError)
+			return
+		}
 	}
 	w.Header().Set("content-type", "application/json")
 	_, err = w.Write(data)
@@ -392,6 +418,66 @@ func (h *HandlerSet) HandleDeleteItem(w http.ResponseWriter, req *http.Request) 
 			http.StatusInternalServerError)
 		return
 	}
+}
+
+func (h *HandlerSet) prepareLoginAndPasswordItem(w http.ResponseWriter, req *http.Request) (*types.LoginPasswordItem, error) {
+
+	var logopass *types.LoginPasswordItem
+
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		http.Error(w, "Something went wrong",
+			http.StatusUnauthorized)
+		return nil, err
+	}
+	err = json.Unmarshal(body, &logopass)
+
+	if err != nil {
+		http.Error(w, "Could not unmarshal body",
+			http.StatusBadRequest)
+		return nil, err
+	}
+	return logopass, nil
+}
+
+func (h *HandlerSet) prepareTextItem(w http.ResponseWriter, req *http.Request) (*types.TextItem, error) {
+
+	var text *types.TextItem
+
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		http.Error(w, "Something went wrong",
+			http.StatusUnauthorized)
+		return nil, err
+	}
+	err = json.Unmarshal(body, &text)
+
+	if err != nil {
+		http.Error(w, "Could not unmarshal body",
+			http.StatusBadRequest)
+		return nil, err
+	}
+	return text, nil
+}
+
+func (h *HandlerSet) prepareCreditCardItem(w http.ResponseWriter, req *http.Request) (*types.CreditCardItem, error) {
+
+	var card *types.CreditCardItem
+
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		http.Error(w, "Something went wrong",
+			http.StatusUnauthorized)
+		return nil, err
+	}
+	err = json.Unmarshal(body, &card)
+
+	if err != nil {
+		http.Error(w, "Could not unmarshal body",
+			http.StatusBadRequest)
+		return nil, err
+	}
+	return card, nil
 }
 
 func (h *HandlerSet) handleAuthorizeUser(w http.ResponseWriter, req *http.Request) (int, error) {
