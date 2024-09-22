@@ -97,6 +97,45 @@ func (c *Client) CreateLoginPasswordItem(token string, item types.LoginPasswordI
 	return nil
 }
 
+func (c *Client) CreateCreditCardItem(token string, item types.CreditCardItem, encryptKey string) error {
+	err := item.Data.Encrypt(encryptKey)
+
+	if err != nil {
+		return fmt.Errorf("could not encrypt %w", err)
+	}
+	data, err := json.Marshal(item)
+	if err != nil {
+		return fmt.Errorf("could not serialize data")
+	}
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://%s/api/item/credit_card", c.address), bytes.NewBuffer(data))
+
+	if err != nil {
+		return fmt.Errorf("could not create request")
+	}
+	req.Header.Set(Token, token)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.client.Do(req)
+
+	if err != nil {
+		return fmt.Errorf("could not make request %w", err)
+	}
+
+	if resp.StatusCode != http.StatusCreated {
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+
+		return fmt.Errorf("error creating item %s %s", resp.Status, bodyBytes)
+	}
+	return nil
+}
+
 func (c *Client) GetItem(token string, key string) (data []byte, err error) {
 
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://%s/api/item/%s", c.address, key), nil)
@@ -148,8 +187,19 @@ func (c *Client) DeleteItem(token string, key string) error {
 	return nil
 }
 
-func (c *Client) UpdateLogoPassData(token string, pass string, newItem types.LoginPasswordItem) error {
+func (c *Client) UpdateLogoPassData(token string, data []byte) (*http.Response, error) {
 
+	req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("https://%s/api/item/login_password", c.address), bytes.NewBuffer(data))
+
+	if err != nil {
+		return nil, fmt.Errorf("could not create request")
+	}
+	req.Header.Set(Token, token)
+
+	return c.client.Do(req)
+}
+
+func UpdateItem[T types.ItemData](token string, pass string, newItem types.GenericItem[T], method func(string, []byte) (*http.Response, error)) error {
 	err := newItem.Data.Encrypt(pass)
 
 	if err != nil {
@@ -160,14 +210,7 @@ func (c *Client) UpdateLogoPassData(token string, pass string, newItem types.Log
 		return fmt.Errorf("could not serialize data")
 	}
 
-	req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("https://%s/api/item/login_password", c.address), bytes.NewBuffer(data))
-
-	if err != nil {
-		return fmt.Errorf("could not create request")
-	}
-	req.Header.Set(Token, token)
-
-	resp, err := c.client.Do(req)
+	resp, err := method(token, data)
 
 	if err != nil {
 		return fmt.Errorf("could not make request %w", err)
@@ -187,6 +230,17 @@ func (c *Client) UpdateLogoPassData(token string, pass string, newItem types.Log
 	}
 	return nil
 
+}
+
+func (c *Client) UpdateCreditCardData(token string, data []byte) (*http.Response, error) {
+
+	req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("https://%s/api/item/credit_card", c.address), bytes.NewBuffer(data))
+
+	if err != nil {
+		return nil, fmt.Errorf("could not create request")
+	}
+	req.Header.Set(Token, token)
+	return c.client.Do(req)
 }
 
 func (c *Client) getAuthToken(login string, password string, method string) (string, error) {

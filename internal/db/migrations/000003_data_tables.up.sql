@@ -11,7 +11,7 @@ CREATE TABLE item (id BIGSERIAL PRIMARY KEY, user_id BIGINT, key VARCHAR(255), i
 
 CREATE UNIQUE INDEX user_key_indx ON item(user_id, key);
 
-CREATE TABLE credit_card (id SERIAL PRIMARY KEY, item_id BIGINT, number VARCHAR(255), owner_name VARCHAR(255), valid_till DATE, cvc int,
+CREATE TABLE credit_card (id SERIAL PRIMARY KEY, item_id BIGINT, number VARCHAR(255), owner_name VARCHAR(255), valid_till DATE, cvc VARCHAR(12),
     CONSTRAINT fk_card_item_id
     FOREIGN KEY(item_id) 
     REFERENCES item(id)

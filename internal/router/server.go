@@ -43,6 +43,8 @@ func NewServer(conf config.ServerConfig, h handlers.HandlerSet, middlewares ...M
 		r.Use(authMiddleware.Handle)
 		r.Post("/api/item/login_password", h.HandleStoreLoginAndPassword)
 		r.Put("/api/item/login_password", h.HandleUpdateLoginAndPassword)
+		r.Post("/api/item/credit_card", h.HandleStoreCreditCard)
+		r.Put("/api/item/credit_card", h.HandleUpdateCreditCard)
 		r.Get("/api/item/{key}", h.HandleGetItem)
 		r.Delete("/api/item/{key}", h.HandleDeleteItem)
 	})

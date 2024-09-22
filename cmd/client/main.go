@@ -107,14 +107,22 @@ func addRecord(token string, pass string, cli *client.Client) {
 
 	switch action {
 	case prompt.CREDIT_CARD:
-		card, err := prompt.EnterCreditCardData()
+		// empty object is passed for new item
+		card, err := prompt.EnterCreditCardData(types.CreditCardData{})
 		if err != nil {
 			fmt.Println(err.Error())
 			return
 		}
-		fmt.Println(item, card)
+		err = cli.CreateCreditCardItem(token, types.CreditCardItem{Item: *item, Data: card}, pass)
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		} else {
+			fmt.Println("saved")
+		}
 	case prompt.LOGIN_PASSWORD:
 		item.Type = types.TypeLogoPass
+		// empty object is passed for new item
 		logopass, err := prompt.EnterLoginPassword(types.LoginPassword{})
 		if err != nil {
 			fmt.Println(err.Error())
@@ -150,6 +158,12 @@ func seeRecord(token string, pass string, key string, cli *client.Client) error 
 			return err
 		}
 		fmt.Println(logopassItem.Data.String())
+	case types.TypeCreditCard:
+		card, err := types.ParseItem[*types.CreditCardData](data, pass)
+		if err != nil {
+			return err
+		}
+		fmt.Println(card.Data.String())
 	}
 	return nil
 }
@@ -201,6 +215,17 @@ func editRecord(token string, pass string, cli *client.Client) error {
 			} else {
 				fmt.Println("success")
 			}
+		case types.TypeCreditCard:
+			card, err := types.ParseItem[*types.CreditCardData](data, pass)
+			if err != nil {
+				return err
+			}
+			err = updateCreditCardData(token, pass, card, cli)
+			if err != nil {
+				fmt.Println(err.Error())
+			} else {
+				fmt.Println("success")
+			}
 		}
 	}
 	return nil
@@ -219,7 +244,25 @@ func updateLogoPassData(token string, pass string, logopass *types.GenericItem[*
 	if meta == logopass.Item.Info && *newLogoPass == *logopass.Data {
 		return fmt.Errorf("nothing changed")
 	}
-	newItem := &types.LoginPasswordItem{Item: types.Item{Key: logopass.Item.Key, Info: meta}, Data: newLogoPass}
+	newItem := types.GenericItem[*types.LoginPassword]{Item: types.Item{Key: logopass.Item.Key, Info: meta}, Data: newLogoPass}
 
-	return cli.UpdateLogoPassData(token, pass, *newItem)
+	return client.UpdateItem(token, pass, newItem, cli.UpdateLogoPassData)
+}
+
+func updateCreditCardData(token string, pass string, card *types.GenericItem[*types.CreditCardData], cli *client.Client) error {
+
+	meta, err := prompt.EnterMetadata(card.Item.Info)
+	if err != nil {
+		return err
+	}
+	newData, err := prompt.EnterCreditCardData(*card.Data)
+	if err != nil {
+		return err
+	}
+	if meta == card.Item.Info && *newData == *card.Data {
+		return fmt.Errorf("nothing changed")
+	}
+	newItem := types.GenericItem[*types.CreditCardData]{Item: types.Item{Key: card.Item.Key, Info: meta}, Data: newData}
+
+	return client.UpdateItem(token, pass, newItem, cli.UpdateCreditCardData)
 }

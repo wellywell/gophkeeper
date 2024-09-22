@@ -3,16 +3,10 @@ package types
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/wellywell/gophkeeper/internal/encrypt"
 )
-
-type CreditCardData struct {
-	Number string `json:"number"`
-	Valid  string `json:"valid"`
-	Name   string `json:"name"`
-	CVC    string `json:"cvc"`
-}
 
 type ItemType string
 
@@ -29,13 +23,68 @@ type Item struct {
 	Info string   `json:"info" db:"info"`
 	Type ItemType `json:"type" db:"item_type"`
 }
+
 func (i Item) String() string {
 	return fmt.Sprintf("\nKey: %s\nInfo: %s\nType: %s\n", i.Key, i.Info, i.Type)
 }
 
-type CreditCardItem struct {
-	Item Item           `json:"item"`
-	Data CreditCardData `json:"data"`
+type CreditCardData struct {
+	Number     string    `json:"number" db:"number"`
+	ValidMonth string    `json:"valid_month" db:"-"`
+	ValidYear  string    `json:"valid_year" db:"-"`
+	Name       string    `json:"name" db:"owner_name"`
+	CVC        string    `json:"cvc" db:"cvc"`
+	ValidDate  time.Time `db:"valid_till"`
+}
+
+func (c *CreditCardData) Encrypt(key string) error {
+	num, err := encrypt.Encrypt(c.Number, key)
+
+	if err != nil {
+		return err
+	}
+	name, err := encrypt.Encrypt(c.Name, key)
+	if err != nil {
+		return err
+	}
+
+	cvc, err := encrypt.Encrypt(c.CVC, key)
+	if err != nil {
+		return err
+	}
+
+	c.Number = num
+	c.Name = name
+	c.CVC = cvc
+
+	return nil
+}
+
+func (c *CreditCardData) Decrypt(key string) error {
+	num, err := encrypt.Decrypt(c.Number, key)
+
+	if err != nil {
+		return err
+	}
+	name, err := encrypt.Decrypt(c.Name, key)
+	if err != nil {
+		return err
+	}
+
+	cvc, err := encrypt.Decrypt(c.CVC, key)
+	if err != nil {
+		return err
+	}
+
+	c.Number = num
+	c.Name = name
+	c.CVC = cvc
+
+	return nil
+}
+
+func (c *CreditCardData) String() string {
+	return fmt.Sprintf("\nNumber: %s\nValid: %s/%s\nName: %s\nCVC: %s\n", c.Number, c.ValidMonth, c.ValidYear, c.Name, c.CVC)
 }
 
 type LoginPassword struct {
@@ -81,8 +130,12 @@ func (l *LoginPassword) String() string {
 	return fmt.Sprintf("\nLogin: %s\nPassword: %s\n", l.Login, l.Password)
 }
 
+type CreditCardItem struct {
+	Item Item            `json:"item"`
+	Data *CreditCardData `json:"data"`
+}
 type LoginPasswordItem struct {
-	Item Item          `json:"item"`
+	Item Item           `json:"item"`
 	Data *LoginPassword `json:"data"`
 }
 
@@ -122,7 +175,7 @@ func ParseItem[T ItemData](data []byte, decriptKey string) (*GenericItem[T], err
 
 	err = item.Data.Decrypt(decriptKey)
 	if err != nil {
-		return nil,  err
+		return nil, err
 	}
 	return item, nil
 }

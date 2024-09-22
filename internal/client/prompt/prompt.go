@@ -1,7 +1,9 @@
 package prompt
 
 import (
+	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/wellywell/gophkeeper/internal/types"
@@ -94,27 +96,70 @@ func EnterFile() (string, error) {
 	return file, nil
 }
 
-func EnterCreditCardData() (*types.CreditCardData, error) {
+func EnterCreditCardData(card types.CreditCardData) (*types.CreditCardData, error) {
+
 	creds := []*survey.Question{
 		{
-			Name:     "Number",
-			Prompt:   &survey.Input{Message: "Card number: ", Default: "111"},
-			Validate: survey.Required,
+			Name:   "Number",
+			Prompt: &survey.Input{Message: "Card number: ", Default: card.Number},
+			Validate: func(val interface{}) error {
+				_, err := strconv.Atoi(val.(string))
+				if err != nil {
+					return errors.New("digits only")
+				}
+				err = survey.MaxLength(16)(val)
+				if err != nil {
+					return err
+				}
+				return survey.MinLength(15)(val)
+			},
 		},
 		{
-			Name:     "Valid",
-			Prompt:   &survey.Input{Message: "Valid through: "},
-			Validate: survey.Required,
+			Name:   "ValidYear",
+			Prompt: &survey.Input{Message: "Valid through (year): ", Default: card.ValidYear},
+			Validate: func(val interface{}) error {
+				num, err := strconv.Atoi(val.(string))
+				if err != nil {
+					return errors.New("invalid year (numbers only)")
+				}
+				if num < 1000 || num > 9999 {
+					return errors.New("4 digits only")
+				}
+				return nil
+			},
+		},
+		{
+			Name:   "ValidMonth",
+			Prompt: &survey.Input{Message: "Valid through (month): ", Default: card.ValidMonth},
+			Validate: func(val interface{}) error {
+				num, err := strconv.Atoi(val.(string))
+				if err != nil {
+					return errors.New("invalid month (numbers only)")
+				}
+				if num < 1 || num > 12 {
+					return errors.New("month is from 1 to 12")
+				}
+				return nil
+			},
 		},
 		{
 			Name:     "Name",
-			Prompt:   &survey.Input{Message: "Owner name: "},
+			Prompt:   &survey.Input{Message: "Owner name: ", Default: card.Name},
 			Validate: survey.Required,
 		},
 		{
-			Name:     "CVC",
-			Prompt:   &survey.Password{Message: "CVC: "},
-			Validate: survey.Required,
+			Name:   "CVC",
+			Prompt: &survey.Password{Message: "CVC: "},
+			Validate: func(val interface{}) error {
+				num, err := strconv.Atoi(val.(string))
+				if err != nil {
+					return errors.New("invalid year (numbers only)")
+				}
+				if num < 100 || num > 999 {
+					return errors.New("3 digits only")
+				}
+				return nil
+			},
 		},
 	}
 	answers := types.CreditCardData{}

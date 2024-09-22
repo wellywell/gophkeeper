@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/wellywell/gophkeeper/internal/types"
 
@@ -89,18 +90,81 @@ func (d *Database) GetUserID(ctx context.Context, username string) (int, error) 
 
 }
 
-func (d *Database) InsertLogoPass(ctx context.Context, userID int, data types.LoginPasswordItem) error {
-
+func (d *Database) InsertItem(ctx context.Context, tx pgx.Tx, userID int, item types.Item) (int, error) {
 	query := `
 		INSERT INTO item(user_id, key, item_type, info)
 		VALUES ($1, $2, $3, $4)
 		RETURNING id `
 
+	row := tx.QueryRow(ctx, query, userID, item.Key, item.Type, item.Info)
+
+	var itemID int
+	if err := row.Scan(&itemID); err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
+			return 0, fmt.Errorf("%w", &KeyExistsError{Key: item.Key})
+		}
+		return 0, fmt.Errorf("%w", err)
+	}
+	return itemID, nil
+}
+
+func (d *Database) UpdateItem(ctx context.Context, tx pgx.Tx, userID int, item types.Item) (int, error) {
+	query := `
+		UPDATE item
+		SET info = $1
+		WHERE key = $2 AND user_id = $3
+		RETURNING id `
+
+	row := tx.QueryRow(ctx, query, item.Info, item.Key, userID)
+
+	var itemID int
+	if err := row.Scan(&itemID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, fmt.Errorf("%w", &KeyNotFoundError{Key: item.Key})
+		}
+		return 0, fmt.Errorf("unexpected db error %w", err)
+	}
+	return itemID, nil
+}
+
+func (d *Database) InsertCreditCard(ctx context.Context, userID int, item types.CreditCardItem) error {
 	tx, err := d.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("%w", err)
 	}
+	defer func() {
+		err = tx.Rollback(ctx)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+	}()
+	itemID, err := d.InsertItem(ctx, tx, userID, types.Item{Key: item.Item.Key, Type: types.TypeCreditCard, Info: item.Item.Info})
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+	query := `
+		INSERT INTO credit_card (item_id, number, owner_name, valid_till, cvc)
+		VALUES ($1, $2, $3, $4, $5)
+	`
+	_, err = tx.Exec(ctx, query, itemID, item.Data.Number, item.Data.Name, fmt.Sprintf("%s-%s-01", item.Data.ValidYear, item.Data.ValidMonth), item.Data.CVC)
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
 
+	err = tx.Commit(ctx)
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+	return nil
+}
+
+func (d *Database) InsertLogoPass(ctx context.Context, userID int, data types.LoginPasswordItem) error {
+
+	tx, err := d.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
 	defer func() {
 		err = tx.Rollback(ctx)
 		if err != nil {
@@ -108,17 +172,11 @@ func (d *Database) InsertLogoPass(ctx context.Context, userID int, data types.Lo
 		}
 	}()
 
-	row := tx.QueryRow(ctx, query, userID, data.Item.Key, data.Item.Type, data.Item.Info)
-
-	var itemID int
-	if err := row.Scan(&itemID); err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
-			return fmt.Errorf("%w", &KeyExistsError{Key: data.Item.Key})
-		}
+	itemID, err := d.InsertItem(ctx, tx, userID, data.Item)
+	if err != nil {
 		return fmt.Errorf("%w", err)
 	}
-	query = `
+	query := `
 		INSERT INTO logopass (item_id, login, password)
 		VALUES ($1, $2, $3)
 	`
@@ -136,12 +194,6 @@ func (d *Database) InsertLogoPass(ctx context.Context, userID int, data types.Lo
 
 func (d *Database) UpdateLogoPass(ctx context.Context, userID int, data types.LoginPasswordItem) error {
 
-	query := `
-		UPDATE item
-		SET info = $1
-		WHERE key = $2 AND user_id = $3
-		RETURNING id `
-
 	tx, err := d.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("%w", err)
@@ -154,16 +206,11 @@ func (d *Database) UpdateLogoPass(ctx context.Context, userID int, data types.Lo
 		}
 	}()
 
-	row := tx.QueryRow(ctx, query, data.Item.Info, data.Item.Key, userID)
-
-	var itemID int
-	if err := row.Scan(&itemID); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return fmt.Errorf("%w", &KeyNotFoundError{Key: data.Item.Key})
-		}
-		return fmt.Errorf("unexpected db error %w", err)
+	itemID, err := d.UpdateItem(ctx, tx, userID, data.Item)
+	if err != nil {
+		return fmt.Errorf("%w", err)
 	}
-	query = `
+	query := `
 		UPDATE logopass
 		SET login = $1, password = $2
 		WHERE item_id = $3
@@ -180,7 +227,37 @@ func (d *Database) UpdateLogoPass(ctx context.Context, userID int, data types.Lo
 	return nil
 }
 
-func (d *Database) InsertCreditCard(ctx context.Context, userID int, key string, card types.CreditCardData, meta string) error {
+func (d *Database) UpdateCreditCard(ctx context.Context, userID int, data types.CreditCardItem) error {
+	tx, err := d.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+
+	defer func() {
+		err = tx.Rollback(ctx)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+	}()
+
+	itemID, err := d.UpdateItem(ctx, tx, userID, data.Item)
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+	query := `
+		UPDATE credit_card
+		SET number = $1, owner_name = $2, valid_till = $3, cvc = $4
+		WHERE item_id = $5
+	`
+	_, err = tx.Exec(ctx, query, data.Data.Number, data.Data.Name, fmt.Sprintf("%s-%s-01", data.Data.ValidYear, data.Data.ValidMonth), data.Data.CVC, itemID)
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
 	return nil
 }
 
@@ -202,10 +279,6 @@ func (d *Database) DeleteItem(ctx context.Context, userID int, key string) error
 	if err != nil {
 		return err
 	}
-	return nil
-}
-
-func (d *Database) UpdateCreditCard(ctx context.Context, userID int, key string, card types.CreditCardData, meta string) error {
 	return nil
 }
 
@@ -255,6 +328,27 @@ func (d *Database) GetLogoPass(ctx context.Context, itemID int) (*types.LoginPas
 	if err != nil {
 		return nil, fmt.Errorf("failed unpacking rows %w", err)
 	}
+	return &item, nil
+}
+
+func (d *Database) GetCreditCard(ctx context.Context, itemID int) (*types.CreditCardData, error) {
+	query := `
+		SELECT number, owner_name, valid_till, cvc
+		FROM credit_card
+		WHERE item_id = $1
+	`
+
+	rows, err := d.pool.Query(ctx, query, itemID)
+	if err != nil {
+		return nil, fmt.Errorf("failed collecting rows %w", err)
+	}
+
+	item, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[types.CreditCardData])
+	if err != nil {
+		return nil, fmt.Errorf("failed unpacking rows %w", err)
+	}
+	item.ValidMonth = strconv.Itoa(int(item.ValidDate.Month()))
+	item.ValidYear = strconv.Itoa(item.ValidDate.Year())
 	return &item, nil
 }
 
