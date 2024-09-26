@@ -6,7 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime"
+	"mime/multipart"
 	"net/http"
+	"strings"
 
 	"github.com/wellywell/gophkeeper/internal/auth"
 	"github.com/wellywell/gophkeeper/internal/db"
@@ -21,6 +24,8 @@ type Database interface {
 	InsertLogoPass(context.Context, int, types.LoginPasswordItem) error
 	InsertCreditCard(context.Context, int, types.CreditCardItem) error
 	InsertText(context.Context, int, types.TextItem) error
+	InsertBinaryData(context.Context, int, types.BinaryItem) error
+	UpdateBinaryData(context.Context, int, types.BinaryItem) error
 	GetItem(context.Context, int, string) (*types.Item, error)
 	GetLogoPass(context.Context, int) (*types.LoginPassword, error)
 	GetCreditCard(context.Context, int) (*types.CreditCardData, error)
@@ -315,6 +320,59 @@ func (h *HandlerSet) HandleStoreCreditCard(w http.ResponseWriter, req *http.Requ
 	w.WriteHeader(http.StatusCreated)
 }
 
+func (h *HandlerSet) HandleStoreBinaryItem(w http.ResponseWriter, req *http.Request) {
+
+	userID, err := h.handleAuthorizeUser(w, req)
+
+	if err != nil {
+		http.Error(w, "Something went wrong",
+			http.StatusUnauthorized)
+	}
+
+	item, err := h.prepareBinaryItem(w, req)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	err = h.database.InsertBinaryData(req.Context(), userID, *item)
+
+	if err != nil {
+		fmt.Println(err.Error())
+		http.Error(w, "Something went wrong",
+			http.StatusInternalServerError)
+		return
+	}
+}
+
+func (h *HandlerSet) HandleUpdateBinaryItem(w http.ResponseWriter, req *http.Request) {
+
+	userID, err := h.handleAuthorizeUser(w, req)
+
+	if err != nil {
+		http.Error(w, "Something went wrong",
+			http.StatusUnauthorized)
+	}
+
+	item, err := h.prepareBinaryItem(w, req)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	err = h.database.UpdateBinaryData(req.Context(), userID, *item)
+
+	if err != nil {
+		fmt.Println(err.Error())
+		http.Error(w, "Something went wrong",
+			http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+}
+
+
 func (h *HandlerSet) HandleGetItem(w http.ResponseWriter, req *http.Request) {
 
 	userID, err := h.handleAuthorizeUser(w, req)
@@ -374,13 +432,27 @@ func (h *HandlerSet) HandleGetItem(w http.ResponseWriter, req *http.Request) {
 		}
 	case types.TypeText:
 		text, err := h.database.GetText(req.Context(), item.Id)
-		fmt.Println(item.Id)
 		if err != nil {
 			fmt.Println(err.Error())
 			http.Error(w, "Something went wrong", http.StatusInternalServerError)
 			return
 		}
 		result := types.TextItem{Item: *item, Data: *text}
+		data, err = json.Marshal(result)
+		if err != nil {
+			fmt.Println(err.Error())
+			http.Error(w, "Something went wrong", http.StatusInternalServerError)
+			return
+		}
+	case types.TypeBinary:
+		// only metadata in this handler
+		item, err := h.database.GetItem(req.Context(), userID, item.Key)
+		if err != nil {
+			fmt.Println(err.Error())
+			http.Error(w, "Something went wrong", http.StatusInternalServerError)
+			return
+		}
+		result := types.BinaryItem{Item: *item, Data: []byte{}}
 		data, err = json.Marshal(result)
 		if err != nil {
 			fmt.Println(err.Error())
@@ -478,6 +550,48 @@ func (h *HandlerSet) prepareCreditCardItem(w http.ResponseWriter, req *http.Requ
 		return nil, err
 	}
 	return card, nil
+}
+
+func (h *HandlerSet) prepareBinaryItem(w http.ResponseWriter, r *http.Request) (*types.BinaryItem, error) {
+
+	contentType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	if err != nil || !strings.HasPrefix(contentType, "multipart/") {
+		http.Error(w, "expecting a multipart message", http.StatusBadRequest)
+		return nil, err
+	}
+	multipartReader := multipart.NewReader(r.Body, params["boundary"])
+	defer r.Body.Close()
+
+	item := types.BinaryItem{}
+
+	for {
+		part, err := multipartReader.NextPart()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			http.Error(w, "unexpected error when retrieving a part of the message", http.StatusInternalServerError)
+			return nil, err
+		}
+		defer part.Close()
+
+		fileBytes, err := io.ReadAll(part)
+		if err != nil {
+			http.Error(w, "failed to read content of the part", http.StatusInternalServerError)
+			return nil, err
+		}
+		switch part.Header.Get("Content-Type") {
+		case "application/json":
+			err = json.Unmarshal(fileBytes, &item.Item)
+			if err != nil {
+				http.Error(w, "failed to read metadata", http.StatusInternalServerError)
+				return nil, err
+			}
+		case "application/octet-stream":
+			item.Data = fileBytes
+		}
+	}
+	return &item, nil
 }
 
 func (h *HandlerSet) handleAuthorizeUser(w http.ResponseWriter, req *http.Request) (int, error) {

@@ -190,6 +190,38 @@ func (d *Database) InsertCreditCard(ctx context.Context, userID int, item types.
 	return nil
 }
 
+func (d *Database) InsertBinaryData(ctx context.Context, userID int, item types.BinaryItem) error {
+	tx, err := d.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+	defer func() {
+		err = tx.Rollback(ctx)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+	}()
+	itemID, err := d.InsertItem(ctx, tx, userID, types.Item{Key: item.Item.Key, Type: types.TypeBinary, Info: item.Item.Info})
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+	query := `
+		INSERT INTO binary_data (item_id, data)
+		VALUES ($1, $2)
+	`
+	_, err = tx.Exec(ctx, query, itemID, item.Data)
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+	return nil
+}
+
+
 func (d *Database) InsertLogoPass(ctx context.Context, userID int, data types.LoginPasswordItem) error {
 
 	tx, err := d.pool.Begin(ctx)
@@ -292,6 +324,40 @@ func (d *Database) UpdateCreditCard(ctx context.Context, userID int, data types.
 	return nil
 }
 
+func (d *Database) UpdateBinaryData(ctx context.Context, userID int, data types.BinaryItem) error {
+	tx, err := d.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+
+	defer func() {
+		err = tx.Rollback(ctx)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+	}()
+
+	itemID, err := d.UpdateItem(ctx, tx, userID, data.Item)
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+	query := `
+		UPDATE binary_data
+		SET data = $1
+		WHERE item_id = $2
+	`
+	_, err = tx.Exec(ctx, query, data.Data, itemID)
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+	return nil
+}
+
 func (d *Database) UpdateText(ctx context.Context, userID int, data types.TextItem) error {
 	tx, err := d.pool.Begin(ctx)
 	if err != nil {
@@ -326,10 +392,6 @@ func (d *Database) UpdateText(ctx context.Context, userID int, data types.TextIt
 	return nil
 }
 
-func (d *Database) InsertBinaryData(ctx context.Context, userID int, key string, data []byte, meta string) error {
-	return nil
-}
-
 func (d *Database) DeleteItem(ctx context.Context, userID int, key string) error {
 	query := `
 		DELETE FROM item
@@ -340,14 +402,6 @@ func (d *Database) DeleteItem(ctx context.Context, userID int, key string) error
 	if err != nil {
 		return err
 	}
-	return nil
-}
-
-func (d *Database) UpdateTextData(ctx context.Context, userID int, key string, text string, meta string) error {
-	return nil
-}
-
-func (d *Database) UpdateBinaryData(ctx context.Context, userID int, key string, data []byte, meta string) error {
 	return nil
 }
 

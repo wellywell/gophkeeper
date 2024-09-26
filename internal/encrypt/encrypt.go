@@ -53,6 +53,22 @@ func Encrypt(text, MySecret string) (string, error) {
 	return encode(cipherText), nil
 }
 
+
+// Encrypt bytes input
+func EncryptBytes(data []byte, MySecret string) ([]byte, error) {
+
+	key := adjustKeyLength(MySecret)
+
+	block, err := aes.NewCipher([]byte(key))
+	if err != nil {
+		return []byte{}, err
+	}
+	cfb := cipher.NewCFBEncrypter(block, bytes)
+	cipherText := make([]byte, len(data))
+	cfb.XORKeyStream(cipherText, data)
+	return cipherText, nil
+}
+
 // Decrypt method is to extract back the encrypted text
 func Decrypt(text, MySecret string) (string, error) {
 	key := adjustKeyLength(MySecret)
@@ -66,4 +82,18 @@ func Decrypt(text, MySecret string) (string, error) {
 	plainText := make([]byte, len(cipherText))
 	cfb.XORKeyStream(plainText, cipherText)
 	return string(plainText), nil
+}
+
+// Decrypt bytes
+func DecryptBytes(data []byte, MySecret string) ([]byte, error) {
+	key := adjustKeyLength(MySecret)
+
+	block, err := aes.NewCipher([]byte(key))
+	if err != nil {
+		return []byte{}, err
+	}
+	cfb := cipher.NewCFBDecrypter(block, bytes)
+	plainText := make([]byte, len(data))
+	cfb.XORKeyStream(plainText, data)
+	return plainText, nil
 }

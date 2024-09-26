@@ -158,6 +158,33 @@ func (t *TextData) String() string {
 	return fmt.Sprintf("%s\n", string(*t))
 }
 
+type BinaryData []byte
+
+func (b *BinaryData) Encrypt(key string) error {
+	enc, err := encrypt.EncryptBytes(*b, key)
+
+	if err != nil {
+		return err
+	}
+
+	*b = enc
+	return nil
+}
+
+func (b *BinaryData) Decrypt(key string) error {
+	dec, err := encrypt.EncryptBytes(*b, key)
+
+	if err != nil {
+		return err
+	}
+
+	*b = dec
+	return nil
+}
+func (b *BinaryData) String() string {
+	return "Binary data"
+}
+
 type CreditCardItem struct {
 	Item Item            `json:"item"`
 	Data *CreditCardData `json:"data"`
@@ -183,7 +210,7 @@ type AnyItem struct {
 }
 
 type ItemData interface {
-	*LoginPassword | *CreditCardData | *TextData | ~[]byte
+	*LoginPassword | *CreditCardData | *TextData | *BinaryData
 	String() string
 	Encrypt(string) error
 	Decrypt(string) error

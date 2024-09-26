@@ -3,6 +3,7 @@ package menu
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/wellywell/gophkeeper/internal/client"
 	"github.com/wellywell/gophkeeper/internal/client/prompt"
@@ -117,7 +118,24 @@ func addRecord(token string, pass string, cli *client.Client) {
 			fmt.Println(err.Error())
 			return
 		}
-
+	case prompt.BINARY_DATA:
+		item.Type = types.TypeBinary
+		filename, err := prompt.EnterFileName()
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
+		dat, err := os.ReadFile(filename)
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
+		data := types.BinaryData(dat)
+		err = client.CreateItem(token, pass, types.GenericItem[*types.BinaryData]{Item: *item, Data: &data}, cli.CreateBinaryItem)
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
 	}
 	fmt.Println("saved")
 }
@@ -153,6 +171,8 @@ func seeRecord(token string, pass string, key string, cli *client.Client) error 
 			return err
 		}
 		fmt.Println(text.Data.String())
+	case types.TypeBinary:
+		fmt.Println("to download binary content use download menu")
 	}
 	return nil
 }
@@ -220,10 +240,41 @@ func editRecord(token string, pass string, cli *client.Client) error {
 			if err != nil {
 				fmt.Println(err.Error())
 			}
+		case types.TypeBinary:
+			data, err := types.ParseItem[*types.BinaryData](data, pass)
+			if err != nil {
+				return err
+			}
+			err = updateBinaryData(token, pass, data, cli)
+			if err != nil {
+				fmt.Println(err.Error())
+			}
 		}
 		fmt.Println("success")
 	}
 	return nil
+}
+
+func updateBinaryData(token string, pass string, data *types.GenericItem[*types.BinaryData], cli *client.Client) error {
+	meta, err := prompt.EnterMetadata(data.Item.Info)
+	if err != nil {
+		return err
+	}
+	filename, err := prompt.EnterFileName()
+	if err != nil {
+		fmt.Println(err.Error())
+		return err
+	}
+	dat, err := os.ReadFile(filename)
+	if err != nil {
+		fmt.Println(err.Error())
+		return err
+	}
+	d := types.BinaryData(dat)
+
+	newItem := types.GenericItem[*types.BinaryData]{Item: types.Item{Key: data.Item.Key, Info: meta, Type: data.Item.Type}, Data: &d}
+
+	return client.UpdateItem(token, pass, newItem, cli.UpdateBinaryItem)
 }
 
 func updateLogoPassData(token string, pass string, logopass *types.GenericItem[*types.LoginPassword], cli *client.Client) error {

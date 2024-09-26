@@ -45,6 +45,8 @@ func NewServer(conf config.ServerConfig, h handlers.HandlerSet, middlewares ...M
 		r.Put("/api/item/login_password", h.HandleUpdateLoginAndPassword)
 		r.Post("/api/item/credit_card", h.HandleStoreCreditCard)
 		r.Put("/api/item/credit_card", h.HandleUpdateCreditCard)
+		r.Post("/api/item/binary", h.HandleStoreBinaryItem)
+		r.Put("/api/item/binary", h.HandleUpdateBinaryItem)
 		r.Get("/api/item/{key}", h.HandleGetItem)
 		r.Delete("/api/item/{key}", h.HandleDeleteItem)
 		r.Post("/api/item/text", h.HandleStoreText)

@@ -3,6 +3,7 @@ package prompt
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strconv"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -84,6 +85,23 @@ func EnterText(defaultText string) (types.TextData, error) {
 		return "", err
 	}
 	return types.TextData(text), nil
+}
+
+func EnterFileName() (string, error) {
+	file := ""
+	prompt := &survey.Input{
+		Message: "File to read binary data from...",
+		Suggest: func (toComplete string) []string {
+			files, _ := filepath.Glob(toComplete + "*")
+			return files
+		},
+	}
+	err := survey.AskOne(prompt, &file)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return "", err
+	}
+	return file, nil
 }
 
 func EnterFile() (string, error) {
@@ -226,7 +244,7 @@ func Menu() (string, error) {
 
 	err := survey.AskOne(&survey.Select{
 		Message: "What do you want to do?",
-		Options: []string{ADD_RECORD, SEE_RECORDS, SEE_RECORD, EDIT_RECORD, EXIT},
+		Options: []string{ADD_RECORD, SEE_RECORDS, SEE_RECORD, EDIT_RECORD, DOWNLOAD, EXIT},
 		Default: ADD_RECORD,
 	}, &action)
 	if err != nil {

@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"os"
 
 	"github.com/wellywell/gophkeeper/internal/types"
@@ -58,56 +60,47 @@ func (c *Client) Register(login string, password string) (string, error) {
 	return c.getAuthToken(login, password, "register")
 }
 
-func (c *Client) CreateLoginPasswordItem(token string, data []byte) (*http.Response, error) {
+func (c *Client) doRequest(URL string, method string, data []byte, headers map[string]string) (*http.Response, error) {
 
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://%s/api/item/login_password", c.address), bytes.NewBuffer(data))
+	fmt.Println(data)
 
+	body := bytes.NewBuffer(data)
+
+    req, err := http.NewRequest(method, URL, body)
 	if err != nil {
 		return nil, fmt.Errorf("could not create request")
 	}
-	req.Header.Set(Token, token)
-	req.Header.Set("Content-Type", "application/json")
 
-	return c.client.Do(req)
-}
-
-func (c *Client) CreateCreditCardItem(token string, data []byte) (*http.Response, error) {
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://%s/api/item/credit_card", c.address), bytes.NewBuffer(data))
-
-	if err != nil {
-		return nil, fmt.Errorf("could not create request")
+	for key, val := range(headers) {
+		req.Header.Set(key, val)
 	}
-	req.Header.Set(Token, token)
-	req.Header.Set("Content-Type", "application/json")
-
 	return c.client.Do(req)
 
 }
 
-func (c *Client) CreateTextItem(token string, data []byte) (*http.Response, error) {
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://%s/api/item/text", c.address), bytes.NewBuffer(data))
+func (c *Client) CreateBinaryItem(data []byte, headers map[string]string) (*http.Response, error) {
+	return c.doRequest(fmt.Sprintf("https://%s/api/item/binary", c.address), http.MethodPost, data, headers)
+}
 
-	if err != nil {
-		return nil, fmt.Errorf("could not create request")
-	}
-	req.Header.Set(Token, token)
-	req.Header.Set("Content-Type", "application/json")
+func (c *Client) UpdateBinaryItem(data []byte, headers map[string]string) (*http.Response, error) {
+	return c.doRequest(fmt.Sprintf("https://%s/api/item/binary", c.address), http.MethodPut, data, headers)
+}
 
-	return c.client.Do(req)
+func (c *Client) CreateLoginPasswordItem(data []byte, headers map[string]string) (*http.Response, error) {
+	return c.doRequest(fmt.Sprintf("https://%s/api/item/login_password", c.address), http.MethodPost, data, headers)
+}
 
+func (c *Client) CreateCreditCardItem(data []byte, headers map[string]string) (*http.Response, error) {
+	return c.doRequest(fmt.Sprintf("https://%s/api/item/credit_card", c.address), http.MethodPost, data, headers)
+}
+
+func (c *Client) CreateTextItem(data []byte, headers map[string]string) (*http.Response, error) {
+	return c.doRequest(fmt.Sprintf("https://%s/api/item/text", c.address), http.MethodPost, data, headers)
 }
 
 func (c *Client) GetItem(token string, key string) (data []byte, err error) {
 
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://%s/api/item/%s", c.address, key), nil)
-
-	if err != nil {
-		return nil, fmt.Errorf("could not create request")
-	}
-	req.Header.Set(Token, token)
-
-	resp, err := c.client.Do(req)
-
+	resp, err := c.doRequest(fmt.Sprintf("https://%s/api/item/%s", c.address, key), http.MethodGet, nil, map[string]string{Token: token})
 	if err != nil {
 		return nil, fmt.Errorf("could not make request %w", err)
 	}
@@ -125,14 +118,7 @@ func (c *Client) GetItem(token string, key string) (data []byte, err error) {
 
 func (c *Client) DeleteItem(token string, key string) error {
 
-	req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("https://%s/api/item/%s", c.address, key), nil)
-
-	if err != nil {
-		return fmt.Errorf("could not create request")
-	}
-	req.Header.Set(Token, token)
-
-	resp, err := c.client.Do(req)
+	resp, err := c.doRequest(fmt.Sprintf("https://%s/api/item/%s", c.address, key), http.MethodDelete, nil, map[string]string{Token: token})
 	if err != nil {
 		return fmt.Errorf("could not make request %w", err)
 	}
@@ -148,38 +134,16 @@ func (c *Client) DeleteItem(token string, key string) error {
 	return nil
 }
 
-func (c *Client) UpdateLogoPassData(token string, data []byte) (*http.Response, error) {
-
-	req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("https://%s/api/item/login_password", c.address), bytes.NewBuffer(data))
-
-	if err != nil {
-		return nil, fmt.Errorf("could not create request")
-	}
-	req.Header.Set(Token, token)
-
-	return c.client.Do(req)
+func (c *Client) UpdateLogoPassData(data []byte, headers map[string]string) (*http.Response, error) {
+	return c.doRequest(fmt.Sprintf("https://%s/api/item/login_password", c.address), http.MethodPut, data, headers)
 }
 
-func (c *Client) UpdateCreditCardData(token string, data []byte) (*http.Response, error) {
-
-	req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("https://%s/api/item/credit_card", c.address), bytes.NewBuffer(data))
-
-	if err != nil {
-		return nil, fmt.Errorf("could not create request")
-	}
-	req.Header.Set(Token, token)
-	return c.client.Do(req)
+func (c *Client) UpdateCreditCardData(data []byte, headers map[string]string) (*http.Response, error) {
+	return c.doRequest(fmt.Sprintf("https://%s/api/item/credit_card", c.address), http.MethodPut, data, headers)
 }
 
-func (c *Client) UpdateTextData(token string, data []byte) (*http.Response, error) {
-
-	req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("https://%s/api/item/text", c.address), bytes.NewBuffer(data))
-
-	if err != nil {
-		return nil, fmt.Errorf("could not create request")
-	}
-	req.Header.Set(Token, token)
-	return c.client.Do(req)
+func (c *Client) UpdateTextData(data []byte, headers map[string]string) (*http.Response, error) {
+	return c.doRequest(fmt.Sprintf("https://%s/api/item/text", c.address), http.MethodPut, data, headers)
 }
 
 func (c *Client) getAuthToken(login string, password string, method string) (string, error) {
@@ -221,7 +185,7 @@ func (c *Client) getAuthToken(login string, password string, method string) (str
 	return token, nil
 }
 
-func saveItem[T types.ItemData](token string, pass string, newItem types.GenericItem[T], method func(string, []byte) (*http.Response, error)) (*http.Response, error) {
+func saveJSONItem[T types.ItemData](token string, pass string, newItem types.GenericItem[T], method func([]byte, map[string]string) (*http.Response, error)) (*http.Response, error) {
 	err := newItem.Data.Encrypt(pass)
 
 	if err != nil {
@@ -231,10 +195,83 @@ func saveItem[T types.ItemData](token string, pass string, newItem types.Generic
 	if err != nil {
 		return nil, fmt.Errorf("could not serialize data")
 	}
-	return method(token, data)
+	headers := map[string]string{
+		Token: token,
+		"Content-Type": "application/json",
+	}
+	return method(data, headers)
 }
 
-func UpdateItem[T types.ItemData](token string, pass string, newItem types.GenericItem[T], method func(string, []byte) (*http.Response, error)) error {
+
+func saveBinaryItem[T types.BinaryData](token string, pass string, newItem types.GenericItem[*types.BinaryData], method func([]byte, map[string]string) (*http.Response, error)) (*http.Response, error) {
+	err := newItem.Data.Encrypt(pass)
+
+	if err != nil {
+		return nil, fmt.Errorf("could not encrypt %w", err)
+	}
+
+	metadata, err := json.Marshal(newItem.Item)
+	if err != nil {
+		return nil, fmt.Errorf("could not convert %w", err)
+	}
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	// Metadata part
+	metadataHeader := textproto.MIMEHeader{}
+	metadataHeader.Set("Content-Type", "application/json")
+	// Create new multipart part
+	part, err := writer.CreatePart(metadataHeader)
+	if err != nil {
+		return nil, err
+	}
+	// Write the part body
+	_, err = part.Write(metadata)
+	if err != nil {
+		return nil, err
+	}
+	// Media part
+	mediaHeader := textproto.MIMEHeader{}
+	mediaHeader.Set("Content-Type", "application/octet-stream")
+
+	mediaPart, err := writer.CreatePart(mediaHeader)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println([]byte(*newItem.Data))
+	_, err = io.Copy(mediaPart, bytes.NewReader(*newItem.Data))
+	if err != nil {
+		return nil, err
+	}
+	writer.Close()
+
+	headers := map[string]string{
+		"Content-Type": fmt.Sprintf("multipart/related; boundary=%s", writer.Boundary()),
+		"Content-Length": fmt.Sprintf("%d", body.Len()),
+		Token: token,
+	}
+
+    return method(body.Bytes(), headers)
+}
+
+func saveItem[T types.ItemData](token string, pass string, newItem types.GenericItem[T], method func([]byte, map[string]string) (*http.Response, error)) (*http.Response, error) {
+		var resp *http.Response
+		var err error
+
+		switch newItem.Item.Type {
+		case types.TypeBinary:
+			binaryItem, ok := any(newItem).(types.GenericItem[*types.BinaryData])
+			if !ok {
+				return nil, fmt.Errorf("failed to convert binary data")
+			}
+			resp, err = saveBinaryItem(token, pass, binaryItem, method)
+		default:
+			resp, err = saveJSONItem(token, pass, newItem, method)
+		}
+		return resp, err
+	}
+
+func UpdateItem[T types.ItemData](token string, pass string, newItem types.GenericItem[T], method func([]byte, map[string]string) (*http.Response, error)) error {
 
 	resp, err := saveItem(token, pass, newItem, method)
 
@@ -256,7 +293,7 @@ func UpdateItem[T types.ItemData](token string, pass string, newItem types.Gener
 	return nil
 }
 
-func CreateItem[T types.ItemData](token string, pass string, newItem types.GenericItem[T], method func(string, []byte) (*http.Response, error)) error {
+func CreateItem[T types.ItemData](token string, pass string, newItem types.GenericItem[T], method func([]byte, map[string]string) (*http.Response, error)) error {
 	resp, err := saveItem(token, pass, newItem, method)
 
 	if err != nil {
