@@ -4,18 +4,22 @@ import (
 	"fmt"
 )
 
+// UserExistsError ошибка "такой пользовтель уже существует"
 type UserExistsError struct {
 	Username string
 }
 
+// Error метод итерфейса error
 func (e *UserExistsError) Error() string {
 	return fmt.Sprintf("User %s exists", e.Username)
 }
 
+// UserNotFoundError ошибка "пользователь не найден"
 type UserNotFoundError struct {
 	Username string
 }
 
+// Error метод итерфейса error
 func (e *UserNotFoundError) Error() string {
 	return fmt.Sprintf("User %s not found", e.Username)
 }

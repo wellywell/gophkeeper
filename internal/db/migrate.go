@@ -13,6 +13,7 @@ import (
 //go:embed migrations/*
 var fs embed.FS
 
+// Migrate применяет миграции к БД
 func Migrate(dsn string) error {
 
 	d, err := iofs.New(fs, "migrations")

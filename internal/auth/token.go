@@ -7,13 +7,15 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 )
 
+// Claims тип для работы с JWT
 type Claims struct {
 	jwt.RegisteredClaims
 	Username string
 }
-
+// AuthHeader название заголовка для передачи токена
 const AuthHeader = "X-Auth-Token"
 
+// VerifyUser проверяет корректность токена и получает имя пользователя из него
 func VerifyUser(r *http.Request, secret []byte) (string, error) {
 	token := r.Header.Get(AuthHeader)
 	if token != "" {
@@ -25,7 +27,7 @@ func VerifyUser(r *http.Request, secret []byte) (string, error) {
 	}
 	return "", fmt.Errorf("no auth token")
 }
-
+// BuildJWTString создаёт JWT-токен, содержащий имя пользователя
 func BuildJWTString(user string, secret []byte) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
@@ -41,7 +43,7 @@ func BuildJWTString(user string, secret []byte) (string, error) {
 
 	return tokenString, nil
 }
-
+// GetUser парсит токен, проверяет его подпись и извлекает имя пользователя
 func GetUser(tokenString string, secret []byte) (string, error) {
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims,
@@ -61,7 +63,7 @@ func GetUser(tokenString string, secret []byte) (string, error) {
 
 	return claims.Username, nil
 }
-
+// SetToken устанавливает заголовк авторизации с токеном
 func SetToken(username string, w http.ResponseWriter, secret []byte) error {
 
 	token, err := BuildJWTString(username, secret)

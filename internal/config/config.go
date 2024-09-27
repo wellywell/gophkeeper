@@ -1,3 +1,4 @@
+// Package config отвечает за конфигурацию клиента и сервера
 package config
 
 import (
@@ -9,10 +10,16 @@ import (
 )
 
 /*
-адрес и порт запуска сервиса: переменная окружения ОС RUN_ADDRESS или флаг -a;
+адрес и порт запуска сервера: переменная окружения ОС RUN_ADDRESS или флаг -a;
 адрес подключения к базе данных: переменная окружения ОС DATABASE_URI или флаг -d;
+путь к серверному сертификату и ключу SSL_CERT_PATH и SSL_KEY_PATH или флаги -с -k
+
+для запуска клиента:
+адрес сервера env SERVER_ADDRESS или флаг -s
+путь к файлу ключа сертификата CA_KEY или флаг -ssl
 */
 
+// ServerConfig структура с параметрами для сервера
 type ServerConfig struct {
 	RunAddress  string `env:"RUN_ADDRESS"`
 	DatabaseDSN string `env:"DATABASE_URI"`
@@ -21,11 +28,13 @@ type ServerConfig struct {
 	SSLKey string `env:"SSL_KEY_PATH"`
 }
 
+// ClientConfig структура с параметрами для клиента
 type ClientConfig struct {
 	ServerAddress string `env:"SERVER_ADDRESS"`
 	SSLKey string `env:"CA_KEY"`
 }
 
+// NewServerConfig конструктор для создания конфига сервера
 func NewServerConfig() (*ServerConfig, error) {
 	var params ServerConfig
 	err := env.Parse(&params)
@@ -65,6 +74,7 @@ func NewServerConfig() (*ServerConfig, error) {
 	return &params, nil
 }
 
+// NewClientConfig структура для создания клиента конфига
 func NewClientConfig() (*ClientConfig, error) {
 	var params ClientConfig
 	err := env.Parse(&params)

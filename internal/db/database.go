@@ -14,10 +14,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// Database структура для работы с БД
 type Database struct {
 	pool *pgxpool.Pool
 }
 
+// NewDatabase инициализирует Database
 func NewDatabase(connString string) (*Database, error) {
 
 	err := Migrate(connString)
@@ -37,6 +39,7 @@ func NewDatabase(connString string) (*Database, error) {
 	}, nil
 }
 
+// CreateUser создание нового пользователя в БД
 func (d *Database) CreateUser(ctx context.Context, username string, password string) error {
 
 	query := `
@@ -55,6 +58,7 @@ func (d *Database) CreateUser(ctx context.Context, username string, password str
 	return nil
 }
 
+// GetUserHashedPassword получение хэша пароля для авторизации пользователя
 func (d *Database) GetUserHashedPassword(ctx context.Context, username string) (string, error) {
 	query := `
 		SELECT password 
@@ -72,6 +76,7 @@ func (d *Database) GetUserHashedPassword(ctx context.Context, username string) (
 	return password, nil
 }
 
+// GetUserID получеие ID пользователя
 func (d *Database) GetUserID(ctx context.Context, username string) (int, error) {
 	query := `
 		SELECT id 
@@ -90,6 +95,7 @@ func (d *Database) GetUserID(ctx context.Context, username string) (int, error) 
 
 }
 
+// InsertItem сохраняет в БД запись о метаданных Item
 func (d *Database) InsertItem(ctx context.Context, tx pgx.Tx, userID int, item types.Item) (int, error) {
 	query := `
 		INSERT INTO item(user_id, key, item_type, info)
@@ -109,6 +115,7 @@ func (d *Database) InsertItem(ctx context.Context, tx pgx.Tx, userID int, item t
 	return itemID, nil
 }
 
+// UpdateItem обновляет хранящуюся в БД запись с метаданными Item
 func (d *Database) UpdateItem(ctx context.Context, tx pgx.Tx, userID int, item types.Item) (int, error) {
 	query := `
 		UPDATE item
@@ -128,6 +135,7 @@ func (d *Database) UpdateItem(ctx context.Context, tx pgx.Tx, userID int, item t
 	return itemID, nil
 }
 
+// InsertText сохраняет в БД текстовые данные
 func (d *Database) InsertText(ctx context.Context, userID int, item types.TextItem) error {
 	tx, err := d.pool.Begin(ctx)
 	if err != nil {
@@ -159,6 +167,7 @@ func (d *Database) InsertText(ctx context.Context, userID int, item types.TextIt
 	return nil
 }
 
+// InsertCreditCard сохраняет в БД данные кредитной карты
 func (d *Database) InsertCreditCard(ctx context.Context, userID int, item types.CreditCardItem) error {
 	tx, err := d.pool.Begin(ctx)
 	if err != nil {
@@ -190,6 +199,7 @@ func (d *Database) InsertCreditCard(ctx context.Context, userID int, item types.
 	return nil
 }
 
+// InsertBinaryData сохраняет в БД бинарные данные
 func (d *Database) InsertBinaryData(ctx context.Context, userID int, item types.BinaryItem) error {
 	tx, err := d.pool.Begin(ctx)
 	if err != nil {
@@ -221,6 +231,7 @@ func (d *Database) InsertBinaryData(ctx context.Context, userID int, item types.
 	return nil
 }
 
+// InsertLogoPass сохраняет в БД логин и пароль
 func (d *Database) InsertLogoPass(ctx context.Context, userID int, data types.LoginPasswordItem) error {
 
 	tx, err := d.pool.Begin(ctx)
@@ -254,6 +265,7 @@ func (d *Database) InsertLogoPass(ctx context.Context, userID int, data types.Lo
 	return nil
 }
 
+// UpdateLogoPass изменяет логин и пароль, хранимые в БД
 func (d *Database) UpdateLogoPass(ctx context.Context, userID int, data types.LoginPasswordItem) error {
 
 	tx, err := d.pool.Begin(ctx)
@@ -288,7 +300,7 @@ func (d *Database) UpdateLogoPass(ctx context.Context, userID int, data types.Lo
 	}
 	return nil
 }
-
+// UpdateCreditCard обвноляет данные кредитной карты
 func (d *Database) UpdateCreditCard(ctx context.Context, userID int, data types.CreditCardItem) error {
 	tx, err := d.pool.Begin(ctx)
 	if err != nil {
@@ -322,7 +334,7 @@ func (d *Database) UpdateCreditCard(ctx context.Context, userID int, data types.
 	}
 	return nil
 }
-
+// UpdateBinaryData обновляет бинарные данные
 func (d *Database) UpdateBinaryData(ctx context.Context, userID int, data types.BinaryItem) error {
 	tx, err := d.pool.Begin(ctx)
 	if err != nil {
@@ -356,7 +368,7 @@ func (d *Database) UpdateBinaryData(ctx context.Context, userID int, data types.
 	}
 	return nil
 }
-
+// UpdateText обновляет текстовые данные
 func (d *Database) UpdateText(ctx context.Context, userID int, data types.TextItem) error {
 	tx, err := d.pool.Begin(ctx)
 	if err != nil {
@@ -390,7 +402,7 @@ func (d *Database) UpdateText(ctx context.Context, userID int, data types.TextIt
 	}
 	return nil
 }
-
+// DeleteItem удаляет данные из БД
 func (d *Database) DeleteItem(ctx context.Context, userID int, key string) error {
 	query := `
 		DELETE FROM item
@@ -403,7 +415,7 @@ func (d *Database) DeleteItem(ctx context.Context, userID int, key string) error
 	}
 	return nil
 }
-
+// GetBinaryData достаёт бинарные данные из БД
 func (d *Database) GetBinaryData(ctx context.Context, userID int, key string) ([]byte, error) {
 
 	item, err := d.GetItem(ctx, userID, key)
@@ -435,7 +447,7 @@ func (d *Database) GetBinaryData(ctx context.Context, userID int, key string) ([
 	}
 	return data, nil
 }
-
+// GetItem достаёт запись с метаданным из БД
 func (d *Database) GetItem(ctx context.Context, userID int, key string) (*types.Item, error) {
 	query := `
 		SELECT id, item_type, info, key
@@ -457,7 +469,7 @@ func (d *Database) GetItem(ctx context.Context, userID int, key string) (*types.
 	}
 	return &item, nil
 }
-
+// GetLogoPass достаёт данные типа "логин и пароль" из БД
 func (d *Database) GetLogoPass(ctx context.Context, itemID int) (*types.LoginPassword, error) {
 	query := `
 		SELECT login, password
@@ -476,7 +488,7 @@ func (d *Database) GetLogoPass(ctx context.Context, itemID int) (*types.LoginPas
 	}
 	return &item, nil
 }
-
+// GetCreditCard достаёт данные о кредитной карте из БД
 func (d *Database) GetCreditCard(ctx context.Context, itemID int) (*types.CreditCardData, error) {
 	query := `
 		SELECT number, owner_name, valid_till, cvc
@@ -497,7 +509,7 @@ func (d *Database) GetCreditCard(ctx context.Context, itemID int) (*types.Credit
 	item.ValidYear = strconv.Itoa(item.ValidDate.Year())
 	return &item, nil
 }
-
+// GetText достаёт текстовые данные из БД
 func (d *Database) GetText(ctx context.Context, itemID int) (*types.TextData, error) {
 	query := `
 		SELECT data
@@ -515,7 +527,7 @@ func (d *Database) GetText(ctx context.Context, itemID int) (*types.TextData, er
 	}
 	return &text, nil
 }
-
+// GetItems достаёт список объектов, хранимых в БД для данного пользователя
 func (d *Database) GetItems(ctx context.Context, userID int, limit int, offset int) ([]types.Item, error) {
 
 	query := `

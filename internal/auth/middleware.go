@@ -5,6 +5,7 @@ import (
 	"net/http"
 )
 
+// AuthenticateMiddleware миддлвара для аутентификации пользователя
 type AuthenticateMiddleware struct {
 	Secret []byte
 }
@@ -12,7 +13,7 @@ type AuthenticateMiddleware struct {
 type key string
 
 const contextKey key = "username"
-
+// Handle хедер, проверяющий токен юзера и сохраняющий в контексте запроса юзернейм
 func (m AuthenticateMiddleware) Handle(next http.Handler) http.Handler {
 
 	authenticate := func(w http.ResponseWriter, r *http.Request) {
@@ -30,7 +31,7 @@ func (m AuthenticateMiddleware) Handle(next http.Handler) http.Handler {
 	}
 	return http.HandlerFunc(authenticate)
 }
-
+// GetAuthenticatedUser получает имя пользователя из контекста запроса
 func GetAuthenticatedUser(req *http.Request) (string, bool) {
 	user, ok := req.Context().Value(contextKey).(string)
 	return user, ok

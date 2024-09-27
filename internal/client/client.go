@@ -1,3 +1,4 @@
+// Package client содержит методы для создания http-запросов от клиента на сервер
 package client
 
 import (
@@ -19,17 +20,13 @@ import (
 
 const Token = "X-Auth-Token"
 
+// Client тип для работы с http-клиетом
 type Client struct {
 	address string
 	client  *http.Client
 }
 
-type ItemInfo struct {
-	Data []byte
-	Type types.ItemType
-	View string
-}
-
+// NewClient инициализирует клиент
 func NewClient(conf *config.ClientConfig) (*Client, error) {
 	caCert, err := os.ReadFile(conf.SSLKey)
 	if err != nil {
@@ -52,50 +49,35 @@ func NewClient(conf *config.ClientConfig) (*Client, error) {
 	}, nil
 
 }
-
+// Login авторизация пользователя на сервере и получение токена для последующих запросов
 func (c *Client) Login(login string, password string) (string, error) {
 	return c.getAuthToken(login, password, "login")
 }
-
+// Register регистрация пользователя на сервере и получение токена для последующих запросов
 func (c *Client) Register(login string, password string) (string, error) {
 	return c.getAuthToken(login, password, "register")
 }
-
-func (c *Client) doRequest(URL string, method string, data []byte, headers map[string]string) (*http.Response, error) {
-	body := bytes.NewBuffer(data)
-
-	req, err := http.NewRequest(method, URL, body)
-	if err != nil {
-		return nil, fmt.Errorf("could not create request")
-	}
-
-	for key, val := range headers {
-		req.Header.Set(key, val)
-	}
-	return c.client.Do(req)
-
-}
-
+// CreateBinaryItem сохранение на сервере бинарных данных
 func (c *Client) CreateBinaryItem(data []byte, headers map[string]string) (*http.Response, error) {
 	return c.doRequest(fmt.Sprintf("https://%s/api/item/binary", c.address), http.MethodPost, data, headers)
 }
-
+// UpdateBinaryItem обновление бинарных данных, хранимых на сервере
 func (c *Client) UpdateBinaryItem(data []byte, headers map[string]string) (*http.Response, error) {
 	return c.doRequest(fmt.Sprintf("https://%s/api/item/binary", c.address), http.MethodPut, data, headers)
 }
-
+// CreateLoginPasswordItem сохранение на сервере данных типа "логин и пароль"
 func (c *Client) CreateLoginPasswordItem(data []byte, headers map[string]string) (*http.Response, error) {
 	return c.doRequest(fmt.Sprintf("https://%s/api/item/login_password", c.address), http.MethodPost, data, headers)
 }
-
+// CreateCreditCardItem сохранение на сервере данных кредитной карты
 func (c *Client) CreateCreditCardItem(data []byte, headers map[string]string) (*http.Response, error) {
 	return c.doRequest(fmt.Sprintf("https://%s/api/item/credit_card", c.address), http.MethodPost, data, headers)
 }
-
+// CreateTextItem сохранение на сервере текстовых данных
 func (c *Client) CreateTextItem(data []byte, headers map[string]string) (*http.Response, error) {
 	return c.doRequest(fmt.Sprintf("https://%s/api/item/text", c.address), http.MethodPost, data, headers)
 }
-
+// GetItem получение с сервера данных произвольного типа (из числа поддерживаемых)
 func (c *Client) GetItem(token string, key string) (data []byte, err error) {
 
 	resp, err := c.doRequest(fmt.Sprintf("https://%s/api/item/%s", c.address, key), http.MethodGet, nil, map[string]string{Token: token})
@@ -113,7 +95,7 @@ func (c *Client) GetItem(token string, key string) (data []byte, err error) {
 	}
 	return bodyBytes, nil
 }
-
+// SeeRecords получение списка записей, хранимых на сервере
 func (c *Client) SeeRecords(token string, pass string, page int, pageSize int) ([]types.Item, error) {
 
 	resp, err := c.doRequest(fmt.Sprintf("https://%s/api/item/list?page=%d&limit=%d", c.address, page, pageSize), http.MethodGet, nil, map[string]string{Token: token})
@@ -137,7 +119,7 @@ func (c *Client) SeeRecords(token string, pass string, page int, pageSize int) (
 	}
 	return items, nil
 }
-
+// DownloadBinaryData cкачивание бинарных данных с сервера
 func (c *Client) DownloadBinaryData(token string, pass string, key string) (data []byte, err error) {
 	resp, err := c.doRequest(fmt.Sprintf("https://%s/api/item/binary/%s/download", c.address, key), http.MethodGet, nil, map[string]string{Token: token})
 	if err != nil {
@@ -159,7 +141,7 @@ func (c *Client) DownloadBinaryData(token string, pass string, key string) (data
 	}
 	return result, nil
 }
-
+// DeleteItem удаление данных с сервера
 func (c *Client) DeleteItem(token string, key string) error {
 
 	resp, err := c.doRequest(fmt.Sprintf("https://%s/api/item/%s", c.address, key), http.MethodDelete, nil, map[string]string{Token: token})
@@ -177,17 +159,62 @@ func (c *Client) DeleteItem(token string, key string) error {
 	}
 	return nil
 }
-
+// UpdateLogoPassData обновление логина и пароля, хранимых на сервере
 func (c *Client) UpdateLogoPassData(data []byte, headers map[string]string) (*http.Response, error) {
 	return c.doRequest(fmt.Sprintf("https://%s/api/item/login_password", c.address), http.MethodPut, data, headers)
 }
-
+// UpdateCreditCardData обновление данных кредитной карты
 func (c *Client) UpdateCreditCardData(data []byte, headers map[string]string) (*http.Response, error) {
 	return c.doRequest(fmt.Sprintf("https://%s/api/item/credit_card", c.address), http.MethodPut, data, headers)
 }
-
+// UpdateTextData обновление текстовых данных
 func (c *Client) UpdateTextData(data []byte, headers map[string]string) (*http.Response, error) {
 	return c.doRequest(fmt.Sprintf("https://%s/api/item/text", c.address), http.MethodPut, data, headers)
+}
+
+// UpdateItem обобщенный метод для обновления данных типа T
+func UpdateItem[T types.ItemData](token string, pass string, newItem types.GenericItem[T], method func([]byte, map[string]string) (*http.Response, error)) error {
+
+	resp, err := saveItem(token, pass, newItem, method)
+
+	if err != nil {
+		return fmt.Errorf("could not make request %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+
+		return fmt.Errorf("error updating item %s %s", resp.Status, bodyBytes)
+	}
+	return nil
+}
+// CreateItem обобщенный метод для сохранения на сервере данных типа T
+func CreateItem[T types.ItemData](token string, pass string, newItem types.GenericItem[T], method func([]byte, map[string]string) (*http.Response, error)) error {
+	resp, err := saveItem(token, pass, newItem, method)
+
+	if err != nil {
+		return fmt.Errorf("could not make request %w", err)
+	}
+
+	if resp.StatusCode != http.StatusCreated {
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+
+		return fmt.Errorf("error creating item %s %s", resp.Status, bodyBytes)
+	}
+	return nil
 }
 
 func (c *Client) getAuthToken(login string, password string, method string) (string, error) {
@@ -310,46 +337,17 @@ func saveItem[T types.ItemData](token string, pass string, newItem types.Generic
 	return resp, err
 }
 
-func UpdateItem[T types.ItemData](token string, pass string, newItem types.GenericItem[T], method func([]byte, map[string]string) (*http.Response, error)) error {
+func (c *Client) doRequest(URL string, method string, data []byte, headers map[string]string) (*http.Response, error) {
+	body := bytes.NewBuffer(data)
 
-	resp, err := saveItem(token, pass, newItem, method)
-
+	req, err := http.NewRequest(method, URL, body)
 	if err != nil {
-		return fmt.Errorf("could not make request %w", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		bodyBytes, err := io.ReadAll(resp.Body)
-		if err != nil {
-			log.Fatal(err)
-		}
-		if err != nil {
-			return err
-		}
-		defer resp.Body.Close()
-
-		return fmt.Errorf("error updating item %s %s", resp.Status, bodyBytes)
-	}
-	return nil
-}
-
-func CreateItem[T types.ItemData](token string, pass string, newItem types.GenericItem[T], method func([]byte, map[string]string) (*http.Response, error)) error {
-	resp, err := saveItem(token, pass, newItem, method)
-
-	if err != nil {
-		return fmt.Errorf("could not make request %w", err)
+		return nil, fmt.Errorf("could not create request")
 	}
 
-	if resp.StatusCode != http.StatusCreated {
-		bodyBytes, err := io.ReadAll(resp.Body)
-		if err != nil {
-			log.Fatal(err)
-		}
-		if err != nil {
-			return err
-		}
-		defer resp.Body.Close()
-
-		return fmt.Errorf("error creating item %s %s", resp.Status, bodyBytes)
+	for key, val := range headers {
+		req.Header.Set(key, val)
 	}
-	return nil
+	return c.client.Do(req)
+
 }

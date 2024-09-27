@@ -1,3 +1,4 @@
+// Package prompt пакет содержит методы для интерактивных действий с пользователем из консольного клиента
 package prompt
 
 import (
@@ -38,6 +39,7 @@ const (
 	DELETE = "delete"
 )
 
+// EnterKey промпт для ввода названия записи для хранения на сервере
 func EnterKey(key string) (string, error) {
 
 	var entryName string
@@ -48,7 +50,7 @@ func EnterKey(key string) (string, error) {
 	}
 	return entryName, nil
 }
-
+// NextBackExit промпт предлагает загрузить следующую страницу с данными, либо вернуться в главное меню или закрыть программу
 func NextBackExit() (string, error) {
 	var action string
 
@@ -63,7 +65,7 @@ func NextBackExit() (string, error) {
 	}
 	return action, nil
 }
-
+// EnterMetadata предлагает ввести допольнительную информацию об объекте
 func EnterMetadata(info string) (string, error) {
 	var metadata string
 	err := survey.AskOne(&survey.Input{Message: "Enter additional info: ", Default: info}, &metadata)
@@ -73,7 +75,7 @@ func EnterMetadata(info string) (string, error) {
 	}
 	return metadata, nil
 }
-
+// EnterLoginPassword предлагает ввести логин и пароль для сохранения на сервере
 func EnterLoginPassword(item types.LoginPassword) (*types.LoginPassword, error) {
 
 	creds := []*survey.Question{
@@ -96,7 +98,7 @@ func EnterLoginPassword(item types.LoginPassword) (*types.LoginPassword, error) 
 	}
 	return &answers, nil
 }
-
+// EnterText предлагает ввести текст для сохранения на сервере
 func EnterText(defaultText string) (types.TextData, error) {
 	var text string
 	err := survey.AskOne(&survey.Input{Message: "Enter the text data: ", Default: defaultText}, &text)
@@ -106,7 +108,7 @@ func EnterText(defaultText string) (types.TextData, error) {
 	}
 	return types.TextData(text), nil
 }
-
+// EnterFileName предлагает ввести имя (существующего) файла для последующего открытия этого файла
 func EnterFileName() (string, error) {
 	file := ""
 	prompt := &survey.Input{
@@ -123,7 +125,7 @@ func EnterFileName() (string, error) {
 	}
 	return file, nil
 }
-
+// EnterFile предлагает ввести имя нового файла для сохранения данных в нём
 func EnterFile() (string, error) {
 	var file string
 	err := survey.AskOne(&survey.Input{Message: "Enter filename to write data to: "}, &file)
@@ -133,7 +135,7 @@ func EnterFile() (string, error) {
 	}
 	return file, nil
 }
-
+// EnterCreditCardData предлагает ввести данные кредитной карты
 func EnterCreditCardData(card types.CreditCardData) (*types.CreditCardData, error) {
 
 	creds := []*survey.Question{
@@ -209,7 +211,7 @@ func EnterCreditCardData(card types.CreditCardData) (*types.CreditCardData, erro
 	}
 	return &answers, err
 }
-
+// ChooseDataType предлагает выбрать, какой тип данных хочет сохранить пользователь
 func ChooseDataType() (string, error) {
 	var dataType string
 
@@ -225,7 +227,7 @@ func ChooseDataType() (string, error) {
 	return dataType, nil
 
 }
-
+// ChooseLoginOrRegister предлагает залогиниться или зарегистрироваться как новый пользователь
 func ChooseLoginOrRegister() (string, error) {
 
 	var authType string
@@ -241,7 +243,7 @@ func ChooseLoginOrRegister() (string, error) {
 	}
 	return authType, nil
 }
-
+// ChooseEditOrDelete предлагает выбрать, хочет пользователь удалить данные, либо отредактировать
 func ChooseEditOrDelete() (string, error) {
 
 	var action string
@@ -257,7 +259,8 @@ func ChooseEditOrDelete() (string, error) {
 	}
 	return action, nil
 }
-
+// Menu промпт корневого меню - предлагает набор действий пользователю - просмотреть записи,
+// отредактировать запись, получить запись по ключу, загрузить бинарные данные с сервера в файл
 func Menu() (string, error) {
 
 	var action string
@@ -273,7 +276,7 @@ func Menu() (string, error) {
 	}
 	return action, nil
 }
-
+// Authenticate аутентификация пользователя
 func Authenticate(method func(string, string) (string, error)) (string, string, error) {
 	creds := []*survey.Question{
 		{
@@ -297,7 +300,7 @@ func Authenticate(method func(string, string) (string, error)) (string, string, 
 	return token, answers.Password, err
 
 }
-
+// CreateBasicItem создаёт метаданные для любого типа данных
 func CreateBasicItem() (*types.Item, error) {
 	key, err := EnterKey("")
 	if err != nil {

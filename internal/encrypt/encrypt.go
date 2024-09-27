@@ -1,3 +1,4 @@
+// Package encrypt пакет с методами шифрования данных
 package encrypt
 
 import (
@@ -10,32 +11,6 @@ import (
 
 var bytes = []byte{35, 46, 57, 24, 85, 35, 24, 74, 87, 35, 88, 98, 66, 32, 14, 05}
 
-func encode(b []byte) string {
-	return base64.StdEncoding.EncodeToString(b)
-}
-
-func decode(s string) []byte {
-	data, err := base64.StdEncoding.DecodeString(s)
-	if err != nil {
-		panic(err)
-	}
-	return data
-}
-
-func adjustKeyLength(MySecret string) string {
-	if len(MySecret) == 16 || len(MySecret) == 24 || len(MySecret) == 32 {
-		return MySecret
-	}
-	if len(MySecret) < 32 {
-		pad := make([]string, 32-len(MySecret))
-		for i := range len(pad) {
-			pad[i] = "0"
-		}
-		return fmt.Sprintf("%s%s", MySecret, strings.Join(pad, ""))
-	} else {
-		return string([]rune(MySecret)[:32])
-	}
-}
 
 // Encrypt method is to encrypt or hide any classified text
 func Encrypt(text, MySecret string) (string, error) {
@@ -95,4 +70,31 @@ func DecryptBytes(data []byte, MySecret string) ([]byte, error) {
 	plainText := make([]byte, len(data))
 	cfb.XORKeyStream(plainText, data)
 	return plainText, nil
+}
+
+func encode(b []byte) string {
+	return base64.StdEncoding.EncodeToString(b)
+}
+
+func decode(s string) []byte {
+	data, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		panic(err)
+	}
+	return data
+}
+
+func adjustKeyLength(MySecret string) string {
+	if len(MySecret) == 16 || len(MySecret) == 24 || len(MySecret) == 32 {
+		return MySecret
+	}
+	if len(MySecret) < 32 {
+		pad := make([]string, 32-len(MySecret))
+		for i := range len(pad) {
+			pad[i] = "0"
+		}
+		return fmt.Sprintf("%s%s", MySecret, strings.Join(pad, ""))
+	} else {
+		return string([]rune(MySecret)[:32])
+	}
 }

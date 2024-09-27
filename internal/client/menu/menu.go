@@ -1,3 +1,4 @@
+// Package menu определяет основные действия, доступные пользователю через консольный клиент
 package menu
 
 import (
@@ -10,6 +11,7 @@ import (
 	"github.com/wellywell/gophkeeper/internal/types"
 )
 
+// MainMenu корневое меню для выбора основных действий, доступных пользователю
 func MainMenu(token string, pass string, cli *client.Client) {
 
 	for {
@@ -54,7 +56,7 @@ func MainMenu(token string, pass string, cli *client.Client) {
 		}
 	}
 }
-
+// Authenticate аутентификация пользователя - авторизация существующего, либо регистрация нового
 func Authenticate(cli *client.Client) (string, string, error) {
 	authMethod, err := prompt.ChooseLoginOrRegister()
 	if err != nil {

@@ -1,3 +1,4 @@
+// Package handlers определяет обработчики http-запросов для сервера
 package handlers
 
 import (
@@ -17,6 +18,7 @@ import (
 	"github.com/wellywell/gophkeeper/internal/types"
 )
 
+// Database интерфейс определяет методы для работы с БД
 //go:generate mockery --name Database
 type Database interface {
 	GetUserHashedPassword(context.Context, string) (string, error)
@@ -39,6 +41,7 @@ type Database interface {
 	UpdateText(context.Context, int, types.TextItem) error
 }
 
+// HandlerSet структура для работы с хендлерами
 type HandlerSet struct {
 	secret   []byte
 	database Database
@@ -49,6 +52,7 @@ var (
 	ErrAuthDataEmpty     = errors.New("login or password cannot be empty")
 )
 
+// NewHandlerSet инициализирует набор хендлеров
 func NewHandlerSet(secret []byte, database Database) *HandlerSet {
 	return &HandlerSet{
 		secret:   secret,
@@ -56,39 +60,7 @@ func NewHandlerSet(secret []byte, database Database) *HandlerSet {
 	}
 }
 
-func (h *HandlerSet) parseAuthData(body []byte) (username string, password string, err error) {
-
-	var data struct {
-		Username string `json:"login"`
-		Password string `json:"password"`
-	}
-
-	err = json.Unmarshal(body, &data)
-	if err != nil {
-		return "", "", ErrCouldNotParseBody
-	}
-
-	if data.Username == "" || data.Password == "" {
-		return "", "", ErrAuthDataEmpty
-	}
-
-	return data.Username, data.Password, nil
-
-}
-
-func (h *HandlerSet) handleAuthErrors(err error, w http.ResponseWriter) {
-
-	if errors.Is(err, ErrCouldNotParseBody) {
-		http.Error(w, "Could not parse body",
-			http.StatusBadRequest)
-	} else if errors.Is(err, ErrAuthDataEmpty) {
-		http.Error(w, "Login and password cannot be empty",
-			http.StatusBadRequest)
-	} else {
-		http.Error(w, "Unknown error", http.StatusInternalServerError)
-	}
-}
-
+// HandleLogin авторизация пользователя
 func (h *HandlerSet) HandleLogin(w http.ResponseWriter, req *http.Request) {
 
 	body, err := io.ReadAll(req.Body)
@@ -136,6 +108,7 @@ func (h *HandlerSet) HandleLogin(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// HandleRegisterUser регистрация пользователя
 func (h *HandlerSet) HandleRegisterUser(w http.ResponseWriter, req *http.Request) {
 
 	body, err := io.ReadAll(req.Body)
@@ -185,6 +158,7 @@ func (h *HandlerSet) HandleRegisterUser(w http.ResponseWriter, req *http.Request
 	}
 }
 
+// HandleUpdateLoginAndPassword хендлер, обрабатывающий запрос на изменени данных, хранимых не сервере типа "логин-пароль"
 func (h *HandlerSet) HandleUpdateLoginAndPassword(w http.ResponseWriter, req *http.Request) {
 	userID, err := h.handleAuthorizeUser(w, req)
 	if err != nil {
@@ -205,6 +179,7 @@ func (h *HandlerSet) HandleUpdateLoginAndPassword(w http.ResponseWriter, req *ht
 	}
 }
 
+// HandleUpdateCreditCard хендлер, обрабатывающий запрос на изменени данных, хранимых не сервере типа "кредитная карта"
 func (h *HandlerSet) HandleUpdateCreditCard(w http.ResponseWriter, req *http.Request) {
 	userID, err := h.handleAuthorizeUser(w, req)
 	if err != nil {
@@ -225,6 +200,7 @@ func (h *HandlerSet) HandleUpdateCreditCard(w http.ResponseWriter, req *http.Req
 	}
 }
 
+//  HandleStoreLoginAndPassword хендлер, обрабатывающий запрос на сохранение на сервере данных типа "логин и пароль"
 func (h *HandlerSet) HandleStoreLoginAndPassword(w http.ResponseWriter, req *http.Request) {
 
 	userID, err := h.handleAuthorizeUser(w, req)
@@ -250,6 +226,7 @@ func (h *HandlerSet) HandleStoreLoginAndPassword(w http.ResponseWriter, req *htt
 	w.WriteHeader(http.StatusCreated)
 }
 
+// HandleUpdateText обрабатывает запрос на обновление текстовых данных, хранимых на сервере
 func (h *HandlerSet) HandleUpdateText(w http.ResponseWriter, req *http.Request) {
 
 	userID, err := h.handleAuthorizeUser(w, req)
@@ -272,7 +249,7 @@ func (h *HandlerSet) HandleUpdateText(w http.ResponseWriter, req *http.Request) 
 		return
 	}
 }
-
+// HandleStoreText обрабатывает запрос на создание текстовых данных для хранения на сервере
 func (h *HandlerSet) HandleStoreText(w http.ResponseWriter, req *http.Request) {
 
 	userID, err := h.handleAuthorizeUser(w, req)
@@ -298,6 +275,7 @@ func (h *HandlerSet) HandleStoreText(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
+// HandleStoreCreditCard обрабатывает запрос на создание записи с данными кредитной карты на сервере
 func (h *HandlerSet) HandleStoreCreditCard(w http.ResponseWriter, req *http.Request) {
 
 	userID, err := h.handleAuthorizeUser(w, req)
@@ -323,6 +301,7 @@ func (h *HandlerSet) HandleStoreCreditCard(w http.ResponseWriter, req *http.Requ
 	w.WriteHeader(http.StatusCreated)
 }
 
+// HandleStoreBinaryItem обрабатывает запрос на сохранение бинарных данных на сервере
 func (h *HandlerSet) HandleStoreBinaryItem(w http.ResponseWriter, req *http.Request) {
 
 	userID, err := h.handleAuthorizeUser(w, req)
@@ -349,6 +328,7 @@ func (h *HandlerSet) HandleStoreBinaryItem(w http.ResponseWriter, req *http.Requ
 	w.WriteHeader(http.StatusCreated)
 }
 
+// HandleUpdateBinaryItem обрабатывает запрос на обновление бинарных данных на сервере
 func (h *HandlerSet) HandleUpdateBinaryItem(w http.ResponseWriter, req *http.Request) {
 
 	userID, err := h.handleAuthorizeUser(w, req)
@@ -376,6 +356,7 @@ func (h *HandlerSet) HandleUpdateBinaryItem(w http.ResponseWriter, req *http.Req
 	w.WriteHeader(http.StatusCreated)
 }
 
+// HandleDownloadBinaryItem обрабатывает запрос на скачивание бинарных данных
 func (h *HandlerSet) HandleDownloadBinaryItem(w http.ResponseWriter, req *http.Request) {
 	userID, err := h.handleAuthorizeUser(w, req)
 
@@ -413,6 +394,7 @@ func (h *HandlerSet) HandleDownloadBinaryItem(w http.ResponseWriter, req *http.R
 	}
 }
 
+// HandleItemList обрабатывает запрос на получение списка метаданных о записях, хранимых на сервере
 func (h *HandlerSet) HandleItemList(w http.ResponseWriter, req *http.Request) {
 
 	userID, err := h.handleAuthorizeUser(w, req)
@@ -471,6 +453,7 @@ func (h *HandlerSet) HandleItemList(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// HandleGetItem возвращает запись, хранимую на сервере произвольного типа (из числа поддерживаемых)
 func (h *HandlerSet) HandleGetItem(w http.ResponseWriter, req *http.Request) {
 
 	userID, err := h.handleAuthorizeUser(w, req)
@@ -565,7 +548,7 @@ func (h *HandlerSet) HandleGetItem(w http.ResponseWriter, req *http.Request) {
 			http.StatusInternalServerError)
 	}
 }
-
+// HandleDeleteItem удаляет данные с сервера
 func (h *HandlerSet) HandleDeleteItem(w http.ResponseWriter, req *http.Request) {
 
 	userID, err := h.handleAuthorizeUser(w, req)
@@ -708,4 +691,37 @@ func (h *HandlerSet) handleAuthorizeUser(w http.ResponseWriter, req *http.Reques
 	}
 	return userID, nil
 
+}
+
+func (h *HandlerSet) parseAuthData(body []byte) (username string, password string, err error) {
+
+	var data struct {
+		Username string `json:"login"`
+		Password string `json:"password"`
+	}
+
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		return "", "", ErrCouldNotParseBody
+	}
+
+	if data.Username == "" || data.Password == "" {
+		return "", "", ErrAuthDataEmpty
+	}
+
+	return data.Username, data.Password, nil
+
+}
+
+func (h *HandlerSet) handleAuthErrors(err error, w http.ResponseWriter) {
+
+	if errors.Is(err, ErrCouldNotParseBody) {
+		http.Error(w, "Could not parse body",
+			http.StatusBadRequest)
+	} else if errors.Is(err, ErrAuthDataEmpty) {
+		http.Error(w, "Login and password cannot be empty",
+			http.StatusBadRequest)
+	} else {
+		http.Error(w, "Unknown error", http.StatusInternalServerError)
+	}
 }
