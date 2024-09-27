@@ -33,7 +33,7 @@ func main() {
 		panic(err)
 	}
 
-	conf, err := config.NewConfig()
+	conf, err := config.NewServerConfig()
 	if err != nil {
 		panic(err)
 	}

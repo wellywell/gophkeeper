@@ -18,12 +18,12 @@ func main() {
 
 	fmt.Printf("Build version: %s\nBuild date: %s\nBuild commit: %s", buildVersion, buildDate, buildCommit)
 
-	conf, err := config.NewConfig()
+	conf, err := config.NewClientConfig()
 	if err != nil {
 		panic(err)
 	}
 
-	cli, err := client.NewClient(conf.RunAddress)
+	cli, err := client.NewClient(conf)
 	if err != nil {
 		fmt.Println(err.Error())
 		return

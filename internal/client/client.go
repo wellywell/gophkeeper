@@ -13,6 +13,7 @@ import (
 	"net/textproto"
 	"os"
 
+	"github.com/wellywell/gophkeeper/internal/config"
 	"github.com/wellywell/gophkeeper/internal/types"
 )
 
@@ -29,8 +30,8 @@ type ItemInfo struct {
 	View string
 }
 
-func NewClient(addr string) (*Client, error) {
-	caCert, err := os.ReadFile("ca.key")
+func NewClient(conf *config.ClientConfig) (*Client, error) {
+	caCert, err := os.ReadFile(conf.SSLKey)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -46,7 +47,7 @@ func NewClient(addr string) (*Client, error) {
 		},
 	}
 	return &Client{
-		address: addr,
+		address: conf.ServerAddress,
 		client:  client,
 	}, nil
 

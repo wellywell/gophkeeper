@@ -60,7 +60,7 @@ func NewServer(conf config.ServerConfig, h handlers.HandlerSet, middlewares ...M
 
 // ListenAndServe - метод для запуска сервера
 func (s *Server) ListenAndServe() error {
-	err := s.server.ListenAndServeTLS("server.crt", "server.key")
+	err := s.server.ListenAndServeTLS(s.config.SSLCert, s.config.SSLKey)
 	return err
 }
 
