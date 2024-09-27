@@ -51,6 +51,8 @@ func NewServer(conf config.ServerConfig, h handlers.HandlerSet, middlewares ...M
 		r.Delete("/api/item/{key}", h.HandleDeleteItem)
 		r.Post("/api/item/text", h.HandleStoreText)
 		r.Put("/api/item/text", h.HandleUpdateText)
+		r.Get("/api/item/binary/{key}/download", h.HandleDownloadBinaryItem)
+		r.Get("/api/item/list", h.HandleItemList)
 	})
 
 	return &Server{server: http.Server{Addr: conf.RunAddress, Handler: r}, config: conf}

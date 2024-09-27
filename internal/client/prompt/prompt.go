@@ -11,14 +11,19 @@ import (
 )
 
 const (
-	REGISTER    = "register"
-	LOGIN       = "login"
+	REGISTER = "register"
+	LOGIN    = "login"
+)
+
+const (
 	ADD_RECORD  = "Add a record"
-	SEE_RECORD  = "Show a record by key"
-	SEE_RECORDS = "Show all records"
+	SEE_RECORD  = "Show record data"
+	SEE_RECORDS = "List all records"
 	EDIT_RECORD = "Edit record"
 	DOWNLOAD    = "Download binary data"
 	EXIT        = "Exit"
+	CANCEL      = "Back to main menu"
+	NEXT        = "Next page"
 )
 
 const (
@@ -42,6 +47,21 @@ func EnterKey(key string) (string, error) {
 		return "", err
 	}
 	return entryName, nil
+}
+
+func NextBackExit() (string, error) {
+	var action string
+
+	err := survey.AskOne(&survey.Select{
+		Message: "",
+		Options: []string{NEXT, CANCEL, EXIT},
+		Default: NEXT,
+	}, &action)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return "", err
+	}
+	return action, nil
 }
 
 func EnterMetadata(info string) (string, error) {
@@ -91,7 +111,7 @@ func EnterFileName() (string, error) {
 	file := ""
 	prompt := &survey.Input{
 		Message: "File to read binary data from...",
-		Suggest: func (toComplete string) []string {
+		Suggest: func(toComplete string) []string {
 			files, _ := filepath.Glob(toComplete + "*")
 			return files
 		},
@@ -106,7 +126,7 @@ func EnterFileName() (string, error) {
 
 func EnterFile() (string, error) {
 	var file string
-	err := survey.AskOne(&survey.Input{Message: "Enter path to file with binary data: "}, &file)
+	err := survey.AskOne(&survey.Input{Message: "Enter filename to write data to: "}, &file)
 	if err != nil {
 		fmt.Println("Error:", err)
 		return "", err
@@ -195,7 +215,7 @@ func ChooseDataType() (string, error) {
 
 	err := survey.AskOne(&survey.Select{
 		Message: "What kind of data would you like to store?",
-		Options: []string{LOGIN_PASSWORD, CREDIT_CARD, TEXT, BINARY_DATA},
+		Options: []string{LOGIN_PASSWORD, CREDIT_CARD, TEXT, BINARY_DATA, CANCEL},
 		Default: LOGIN_PASSWORD,
 	}, &dataType)
 	if err != nil {
@@ -228,7 +248,7 @@ func ChooseEditOrDelete() (string, error) {
 
 	err := survey.AskOne(&survey.Select{
 		Message: "Would you like to edit or delete item?",
-		Options: []string{EDIT, DELETE},
+		Options: []string{EDIT, DELETE, CANCEL},
 		Default: EDIT,
 	}, &action)
 	if err != nil {

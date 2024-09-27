@@ -25,7 +25,10 @@ func MainMenu(token string, pass string, cli *client.Client) {
 		case prompt.ADD_RECORD:
 			addRecord(token, pass, cli)
 		case prompt.SEE_RECORDS:
-			seeRecords(token, pass, cli)
+			err = listRecords(token, pass, cli)
+			if err != nil {
+				fmt.Println(err.Error())
+			}
 		case prompt.SEE_RECORD:
 			key, err := prompt.EnterKey("")
 			if err != nil {
@@ -38,6 +41,13 @@ func MainMenu(token string, pass string, cli *client.Client) {
 			}
 		case prompt.EDIT_RECORD:
 			err = editRecord(token, pass, cli)
+			if err != nil {
+				fmt.Println(err.Error())
+			} else {
+				fmt.Println("Success")
+			}
+		case prompt.DOWNLOAD:
+			err = downloadData(token, pass, cli)
 			if err != nil {
 				fmt.Println(err.Error())
 			}
@@ -71,6 +81,9 @@ func addRecord(token string, pass string, cli *client.Client) {
 	action, err := prompt.ChooseDataType()
 	if err != nil {
 		fmt.Println(err.Error())
+		return
+	}
+	if action == prompt.CANCEL {
 		return
 	}
 
@@ -177,8 +190,42 @@ func seeRecord(token string, pass string, key string, cli *client.Client) error 
 	return nil
 }
 
-func seeRecords(token string, pass string, cli *client.Client) {
-	fmt.Println("Unimplimented")
+func listRecords(token string, pass string, cli *client.Client) error {
+
+	pageSize := 10
+	page := 1
+	for {
+		fmt.Printf("Page %d\n", page)
+		items, err := cli.SeeRecords(token, pass, page, pageSize)
+		if err != nil {
+			return err
+		}
+		showItems(items)
+		if len(items) < pageSize {
+			break
+		}
+
+		action, err := prompt.NextBackExit()
+		if err != nil {
+			return err
+		}
+		switch action {
+		case prompt.EXIT:
+			os.Exit(0)
+		case prompt.CANCEL:
+			return nil
+		case prompt.NEXT:
+			page += 1
+			continue
+		}
+	}
+	return nil
+}
+
+func showItems(items []types.Item) {
+	for _, i := range items {
+		fmt.Println(i.String())
+	}
 }
 
 func editRecord(token string, pass string, cli *client.Client) error {
@@ -200,7 +247,11 @@ func editRecord(token string, pass string, cli *client.Client) error {
 
 	result, err := prompt.ChooseEditOrDelete()
 	if err != nil {
-		return err
+		return fmt.Errorf("canceled")
+	}
+
+	if result == prompt.CANCEL {
+		return nil
 	}
 
 	switch result {
@@ -218,40 +269,51 @@ func editRecord(token string, pass string, cli *client.Client) error {
 			if err != nil {
 				return err
 			}
-			err = updateLogoPassData(token, pass, logopassItem, cli)
-			if err != nil {
-				fmt.Println(err.Error())
-			}
+			return updateLogoPassData(token, pass, logopassItem, cli)
 		case types.TypeCreditCard:
 			card, err := types.ParseItem[*types.CreditCardData](data, pass)
 			if err != nil {
 				return err
 			}
-			err = updateCreditCardData(token, pass, card, cli)
-			if err != nil {
-				fmt.Println(err.Error())
-			}
+			return updateCreditCardData(token, pass, card, cli)
+
 		case types.TypeText:
 			text, err := types.ParseItem[*types.TextData](data, pass)
 			if err != nil {
 				return err
 			}
-			err = updateTextData(token, pass, text, cli)
-			if err != nil {
-				fmt.Println(err.Error())
-			}
+			return updateTextData(token, pass, text, cli)
+
 		case types.TypeBinary:
 			data, err := types.ParseItem[*types.BinaryData](data, pass)
 			if err != nil {
 				return err
 			}
-			err = updateBinaryData(token, pass, data, cli)
-			if err != nil {
-				fmt.Println(err.Error())
-			}
+			return updateBinaryData(token, pass, data, cli)
 		}
-		fmt.Println("success")
 	}
+	return nil
+}
+
+func downloadData(token string, pass string, cli *client.Client) error {
+	key, err := prompt.EnterKey("")
+	if err != nil {
+		return err
+	}
+	data, err := cli.DownloadBinaryData(token, pass, key)
+	if err != nil {
+		return err
+	}
+	fmt.Println("Download succeeded")
+	filename, err := prompt.EnterFile()
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(filename, data, 0644)
+	if err != nil {
+		return err
+	}
+	fmt.Println("Saved to file")
 	return nil
 }
 

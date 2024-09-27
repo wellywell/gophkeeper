@@ -53,7 +53,6 @@ func Encrypt(text, MySecret string) (string, error) {
 	return encode(cipherText), nil
 }
 
-
 // Encrypt bytes input
 func EncryptBytes(data []byte, MySecret string) ([]byte, error) {
 

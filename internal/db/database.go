@@ -221,7 +221,6 @@ func (d *Database) InsertBinaryData(ctx context.Context, userID int, item types.
 	return nil
 }
 
-
 func (d *Database) InsertLogoPass(ctx context.Context, userID int, data types.LoginPasswordItem) error {
 
 	tx, err := d.pool.Begin(ctx)
@@ -405,6 +404,38 @@ func (d *Database) DeleteItem(ctx context.Context, userID int, key string) error
 	return nil
 }
 
+func (d *Database) GetBinaryData(ctx context.Context, userID int, key string) ([]byte, error) {
+
+	item, err := d.GetItem(ctx, userID, key)
+	if err != nil {
+		return nil, err
+	}
+
+	if item.Type != types.TypeBinary {
+		return nil, &KeyNotFoundError{Key: key}
+	}
+
+	query := `
+		SELECT data
+		FROM binary_data
+		WHERE item_id = $1
+	`
+
+	rows, err := d.pool.Query(ctx, query, item.Id)
+	if err != nil {
+		return nil, fmt.Errorf("failed collecting rows %w", err)
+	}
+
+	data, err := pgx.CollectOneRow(rows, pgx.RowTo[[]byte])
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, &KeyNotFoundError{Key: key}
+		}
+		return nil, fmt.Errorf("failed unpacking rows %w", err)
+	}
+	return data, nil
+}
+
 func (d *Database) GetItem(ctx context.Context, userID int, key string) (*types.Item, error) {
 	query := `
 		SELECT id, item_type, info, key
@@ -485,8 +516,27 @@ func (d *Database) GetText(ctx context.Context, itemID int) (*types.TextData, er
 	return &text, nil
 }
 
-func (d *Database) GetAllItems(ctx context.Context, userID int) ([]types.Item, error) {
-	return nil, nil
+func (d *Database) GetItems(ctx context.Context, userID int, limit int, offset int) ([]types.Item, error) {
+
+	query := `
+		SELECT id, item_type, info, key
+		FROM item
+		WHERE user_id = $1
+		ORDER BY id
+		LIMIT $2
+		OFFSET $3
+	`
+
+	rows, err := d.pool.Query(ctx, query, userID, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("failed collecting rows %w", err)
+	}
+
+	items, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.Item])
+	if err != nil {
+		return nil, fmt.Errorf("failed unpacking rows %w", err)
+	}
+	return items, nil
 }
 
 // Close завершает работу базы данных

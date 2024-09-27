@@ -61,17 +61,14 @@ func (c *Client) Register(login string, password string) (string, error) {
 }
 
 func (c *Client) doRequest(URL string, method string, data []byte, headers map[string]string) (*http.Response, error) {
-
-	fmt.Println(data)
-
 	body := bytes.NewBuffer(data)
 
-    req, err := http.NewRequest(method, URL, body)
+	req, err := http.NewRequest(method, URL, body)
 	if err != nil {
 		return nil, fmt.Errorf("could not create request")
 	}
 
-	for key, val := range(headers) {
+	for key, val := range headers {
 		req.Header.Set(key, val)
 	}
 	return c.client.Do(req)
@@ -114,6 +111,52 @@ func (c *Client) GetItem(token string, key string) (data []byte, err error) {
 		return nil, fmt.Errorf("error fetching item %s %s", resp.Status, bodyBytes)
 	}
 	return bodyBytes, nil
+}
+
+func (c *Client) SeeRecords(token string, pass string, page int, pageSize int) ([]types.Item, error) {
+
+	resp, err := c.doRequest(fmt.Sprintf("https://%s/api/item/list?page=%d&limit=%d", c.address, page, pageSize), http.MethodGet, nil, map[string]string{Token: token})
+	if err != nil {
+		return nil, fmt.Errorf("could not make request %w", err)
+	}
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("error fetching item %s %s", resp.Status, bodyBytes)
+	}
+
+	items := make([]types.Item, pageSize)
+
+	err = json.Unmarshal(bodyBytes, &items)
+	if err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+func (c *Client) DownloadBinaryData(token string, pass string, key string) (data []byte, err error) {
+	resp, err := c.doRequest(fmt.Sprintf("https://%s/api/item/binary/%s/download", c.address, key), http.MethodGet, nil, map[string]string{Token: token})
+	if err != nil {
+		return nil, fmt.Errorf("could not make request %w", err)
+	}
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("error fetching item %s %s", resp.Status, bodyBytes)
+	}
+
+	result := types.BinaryData(bodyBytes)
+	err = result.Decrypt(pass)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 func (c *Client) DeleteItem(token string, key string) error {
@@ -166,14 +209,11 @@ func (c *Client) getAuthToken(login string, password string, method string) (str
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	defer resp.Body.Close()
-	bodyBytes, err := io.ReadAll(resp.Body)
+
 	if err != nil {
 		log.Fatal(err)
 	}
-	bodyString := string(bodyBytes)
-	fmt.Println(bodyString)
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("not authenticated")
 	}
@@ -196,12 +236,11 @@ func saveJSONItem[T types.ItemData](token string, pass string, newItem types.Gen
 		return nil, fmt.Errorf("could not serialize data")
 	}
 	headers := map[string]string{
-		Token: token,
+		Token:          token,
 		"Content-Type": "application/json",
 	}
 	return method(data, headers)
 }
-
 
 func saveBinaryItem[T types.BinaryData](token string, pass string, newItem types.GenericItem[*types.BinaryData], method func([]byte, map[string]string) (*http.Response, error)) (*http.Response, error) {
 	err := newItem.Data.Encrypt(pass)
@@ -238,7 +277,6 @@ func saveBinaryItem[T types.BinaryData](token string, pass string, newItem types
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println([]byte(*newItem.Data))
 	_, err = io.Copy(mediaPart, bytes.NewReader(*newItem.Data))
 	if err != nil {
 		return nil, err
@@ -246,30 +284,30 @@ func saveBinaryItem[T types.BinaryData](token string, pass string, newItem types
 	writer.Close()
 
 	headers := map[string]string{
-		"Content-Type": fmt.Sprintf("multipart/related; boundary=%s", writer.Boundary()),
+		"Content-Type":   fmt.Sprintf("multipart/related; boundary=%s", writer.Boundary()),
 		"Content-Length": fmt.Sprintf("%d", body.Len()),
-		Token: token,
+		Token:            token,
 	}
 
-    return method(body.Bytes(), headers)
+	return method(body.Bytes(), headers)
 }
 
 func saveItem[T types.ItemData](token string, pass string, newItem types.GenericItem[T], method func([]byte, map[string]string) (*http.Response, error)) (*http.Response, error) {
-		var resp *http.Response
-		var err error
+	var resp *http.Response
+	var err error
 
-		switch newItem.Item.Type {
-		case types.TypeBinary:
-			binaryItem, ok := any(newItem).(types.GenericItem[*types.BinaryData])
-			if !ok {
-				return nil, fmt.Errorf("failed to convert binary data")
-			}
-			resp, err = saveBinaryItem(token, pass, binaryItem, method)
-		default:
-			resp, err = saveJSONItem(token, pass, newItem, method)
+	switch newItem.Item.Type {
+	case types.TypeBinary:
+		binaryItem, ok := any(newItem).(types.GenericItem[*types.BinaryData])
+		if !ok {
+			return nil, fmt.Errorf("failed to convert binary data")
 		}
-		return resp, err
+		resp, err = saveBinaryItem(token, pass, binaryItem, method)
+	default:
+		resp, err = saveJSONItem(token, pass, newItem, method)
 	}
+	return resp, err
+}
 
 func UpdateItem[T types.ItemData](token string, pass string, newItem types.GenericItem[T], method func([]byte, map[string]string) (*http.Response, error)) error {
 

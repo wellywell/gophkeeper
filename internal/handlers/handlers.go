@@ -9,6 +9,7 @@ import (
 	"mime"
 	"mime/multipart"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/wellywell/gophkeeper/internal/auth"
@@ -27,6 +28,8 @@ type Database interface {
 	InsertBinaryData(context.Context, int, types.BinaryItem) error
 	UpdateBinaryData(context.Context, int, types.BinaryItem) error
 	GetItem(context.Context, int, string) (*types.Item, error)
+	GetItems(context.Context, int, int, int) ([]types.Item, error)
+	GetBinaryData(context.Context, int, string) ([]byte, error)
 	GetLogoPass(context.Context, int) (*types.LoginPassword, error)
 	GetCreditCard(context.Context, int) (*types.CreditCardData, error)
 	GetText(context.Context, int) (*types.TextData, error)
@@ -343,6 +346,7 @@ func (h *HandlerSet) HandleStoreBinaryItem(w http.ResponseWriter, req *http.Requ
 			http.StatusInternalServerError)
 		return
 	}
+	w.WriteHeader(http.StatusCreated)
 }
 
 func (h *HandlerSet) HandleUpdateBinaryItem(w http.ResponseWriter, req *http.Request) {
@@ -372,6 +376,100 @@ func (h *HandlerSet) HandleUpdateBinaryItem(w http.ResponseWriter, req *http.Req
 	w.WriteHeader(http.StatusCreated)
 }
 
+func (h *HandlerSet) HandleDownloadBinaryItem(w http.ResponseWriter, req *http.Request) {
+	userID, err := h.handleAuthorizeUser(w, req)
+
+	if err != nil {
+		http.Error(w, "Something went wrong",
+			http.StatusUnauthorized)
+	}
+
+	idString := req.PathValue("key")
+
+	if idString == "" {
+		http.Error(w, "Key not passed", http.StatusBadRequest)
+		return
+	}
+	data, err := h.database.GetBinaryData(req.Context(), userID, idString)
+
+	if err != nil {
+		var keyNotFound *db.KeyNotFoundError
+		if errors.As(err, &keyNotFound) {
+			http.Error(w, "Not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Something went wrong",
+			http.StatusInternalServerError)
+		fmt.Println(err.Error())
+		return
+	}
+
+	w.Header().Set("content-type", "application/octet-stream")
+	_, err = w.Write(data)
+	if err != nil {
+		fmt.Println(err.Error())
+		http.Error(w, "Something went wrong",
+			http.StatusInternalServerError)
+	}
+}
+
+func (h *HandlerSet) HandleItemList(w http.ResponseWriter, req *http.Request) {
+
+	userID, err := h.handleAuthorizeUser(w, req)
+
+	if err != nil {
+		http.Error(w, "Something went wrong",
+			http.StatusUnauthorized)
+	}
+	s := req.URL.Query().Get("page")
+
+	var page int
+	var limit int
+
+	if s == "" {
+		page = 1
+	} else {
+		page, err = strconv.Atoi(s)
+		if err != nil {
+			http.Error(w, "Error parsing page", http.StatusBadRequest)
+			return
+		}
+	}
+	s = req.URL.Query().Get("limit")
+	if s == "" {
+		limit = 10
+	} else {
+		limit, err = strconv.Atoi(s)
+		if err != nil {
+			http.Error(w, "Error parsing limit", http.StatusBadRequest)
+			return
+		}
+	}
+
+	offset := (page - 1) * limit
+	items, err := h.database.GetItems(req.Context(), userID, limit, offset)
+
+	if err != nil {
+		fmt.Println(err.Error())
+		http.Error(w, "Something went wrong",
+			http.StatusInternalServerError)
+		return
+	}
+
+	data, err := json.Marshal(items)
+	if err != nil {
+		fmt.Println(err.Error())
+		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("content-type", "application/json")
+	_, err = w.Write(data)
+	if err != nil {
+		http.Error(w, "Something went wrong",
+			http.StatusInternalServerError)
+	}
+}
 
 func (h *HandlerSet) HandleGetItem(w http.ResponseWriter, req *http.Request) {
 
