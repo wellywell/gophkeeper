@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 )
 
@@ -17,6 +18,8 @@ const contextKey key = "username"
 func (m AuthenticateMiddleware) Handle(next http.Handler) http.Handler {
 
 	authenticate := func(w http.ResponseWriter, r *http.Request) {
+
+		fmt.Println("auth func")
 
 		user, err := VerifyUser(r, m.Secret)
 		if err != nil {

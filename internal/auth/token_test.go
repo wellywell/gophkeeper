@@ -2,7 +2,10 @@ package auth
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestVerifyUser(t *testing.T) {
@@ -10,16 +13,24 @@ func TestVerifyUser(t *testing.T) {
 		r      *http.Request
 		secret []byte
 	}
+
 	tests := []struct {
 		name    string
 		args    args
+		token string
 		want    string
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"good token", args{httptest.NewRequest(http.MethodGet, "/api/", nil), []byte("secret")}, "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VybmFtZSI6InVzZXIifQ.2MU1vpPXOY4ypHv1bPVpTqOG0zQmk4-ZD8Qoze4xVKg", "user", false},
+		{"bad token", args{httptest.NewRequest(http.MethodGet, "/api/", nil), []byte("secret")}, "bad", "", true},
+		{"wrong secret", args{httptest.NewRequest(http.MethodGet, "/api/", nil), []byte("wrong")}, "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VybmFtZSI6InVzZXIifQ.2MU1vpPXOY4ypHv1bPVpTqOG0zQmk4-ZD8Qoze4xVKg", "", true},
+		{"empty token", args{httptest.NewRequest(http.MethodGet, "/api/", nil), []byte("secret")}, "", "", true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+
+			tt.args.r.Header.Set("X-Auth-Token", tt.token)
+
 			got, err := VerifyUser(tt.args.r, tt.args.secret)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("VerifyUser() error = %v, wantErr %v", err, tt.wantErr)
@@ -43,7 +54,7 @@ func TestBuildJWTString(t *testing.T) {
 		want    string
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"token", args{"user", []byte("secret")}, "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VybmFtZSI6InVzZXIifQ.2MU1vpPXOY4ypHv1bPVpTqOG0zQmk4-ZD8Qoze4xVKg", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -70,7 +81,9 @@ func TestGetUser(t *testing.T) {
 		want    string
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"userPresent", args{"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VybmFtZSI6InVzZXIifQ.2MU1vpPXOY4ypHv1bPVpTqOG0zQmk4-ZD8Qoze4xVKg", []byte("secret")}, "user", false},
+		{"wrongToken", args{"wrong", []byte("secret")}, "", true},
+		{"wrongSecret", args{"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VybmFtZSI6InVzZXIifQ.2MU1vpPXOY4ypHv1bPVpTqOG0zQmk4-ZD8Qoze4xVKg", []byte("wrong")}, "", true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -82,6 +95,31 @@ func TestGetUser(t *testing.T) {
 			if got != tt.want {
 				t.Errorf("GetUser() = %v, want %v", got, tt.want)
 			}
+		})
+	}
+}
+
+func TestSetToken(t *testing.T) {
+	type args struct {
+		username string
+		w        http.ResponseWriter
+		secret   []byte
+	}
+	w := httptest.NewRecorder()
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{"set token", args{"user", w, []byte("secret")}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := SetToken(tt.args.username, tt.args.w, tt.args.secret); (err != nil) != tt.wantErr {
+				t.Errorf("SetToken() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			token := w.Header().Get("X-Auth-Token")
+			assert.Equal(t, "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VybmFtZSI6InVzZXIifQ.2MU1vpPXOY4ypHv1bPVpTqOG0zQmk4-ZD8Qoze4xVKg", token)
 		})
 	}
 }

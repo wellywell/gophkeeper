@@ -192,7 +192,7 @@ func (b *BinaryData) Encrypt(key string) error {
 
 // Decrypt расшифровывает данные для показа клиенту
 func (b *BinaryData) Decrypt(key string) error {
-	dec, err := encrypt.EncryptBytes(*b, key)
+	dec, err := encrypt.DecryptBytes(*b, key)
 
 	if err != nil {
 		return err
