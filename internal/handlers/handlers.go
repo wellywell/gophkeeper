@@ -398,8 +398,6 @@ func (h *HandlerSet) HandleUpdateBinaryItem(w http.ResponseWriter, req *http.Req
 			http.StatusInternalServerError)
 		return
 	}
-
-	w.WriteHeader(http.StatusCreated)
 }
 
 // HandleDownloadBinaryItem обрабатывает запрос на скачивание бинарных данных
@@ -407,8 +405,6 @@ func (h *HandlerSet) HandleDownloadBinaryItem(w http.ResponseWriter, req *http.R
 	userID, err := h.handleAuthorizeUser(w, req)
 
 	if err != nil {
-		http.Error(w, "Something went wrong",
-			http.StatusUnauthorized)
 		return
 	}
 
@@ -447,8 +443,6 @@ func (h *HandlerSet) HandleItemList(w http.ResponseWriter, req *http.Request) {
 	userID, err := h.handleAuthorizeUser(w, req)
 
 	if err != nil {
-		http.Error(w, "Something went wrong",
-			http.StatusUnauthorized)
 		return
 	}
 	s := req.URL.Query().Get("page")
@@ -702,21 +696,21 @@ func (h *HandlerSet) prepareBinaryItem(w http.ResponseWriter, r *http.Request) (
 			break
 		}
 		if err != nil {
-			http.Error(w, "unexpected error when retrieving a part of the message", http.StatusInternalServerError)
+			http.Error(w, "unexpected error when retrieving a part of the message", http.StatusBadRequest)
 			return nil, err
 		}
 		defer part.Close()
 
 		fileBytes, err := io.ReadAll(part)
 		if err != nil {
-			http.Error(w, "failed to read content of the part", http.StatusInternalServerError)
+			http.Error(w, "failed to read content of the part", http.StatusBadRequest)
 			return nil, err
 		}
 		switch part.Header.Get("Content-Type") {
 		case "application/json":
 			err = json.Unmarshal(fileBytes, &item.Item)
 			if err != nil {
-				http.Error(w, "failed to read metadata", http.StatusInternalServerError)
+				http.Error(w, "failed to read metadata", http.StatusBadRequest)
 				return nil, err
 			}
 		case "application/octet-stream":

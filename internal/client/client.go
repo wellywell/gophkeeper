@@ -62,6 +62,7 @@ func (c *Client) Register(login string, password string) (string, error) {
 
 // CreateBinaryItem сохранение на сервере бинарных данных
 func (c *Client) CreateBinaryItem(data []byte, headers map[string]string) (*http.Response, error) {
+	fmt.Println(data)
 	return c.doRequest(fmt.Sprintf("https://%s/api/item/binary", c.address), http.MethodPost, data, headers)
 }
 
@@ -326,11 +327,14 @@ func saveBinaryItem[T types.BinaryData](token string, pass string, newItem types
 	}
 	writer.Close()
 
+	fmt.Println(body.String())
+
 	headers := map[string]string{
 		"Content-Type":   fmt.Sprintf("multipart/related; boundary=%s", writer.Boundary()),
 		"Content-Length": fmt.Sprintf("%d", body.Len()),
 		Token:            token,
 	}
+	fmt.Println(headers)
 
 	return method(body.Bytes(), headers)
 }
