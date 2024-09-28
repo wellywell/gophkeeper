@@ -19,6 +19,7 @@ import (
 )
 
 // Database интерфейс определяет методы для работы с БД
+//
 //go:generate mockery --name Database
 type Database interface {
 	GetUserHashedPassword(context.Context, string) (string, error)
@@ -158,12 +159,43 @@ func (h *HandlerSet) HandleRegisterUser(w http.ResponseWriter, req *http.Request
 	}
 }
 
+// HandleStoreLoginAndPassword хендлер, обрабатывающий запрос на сохранение на сервере данных типа "логин и пароль"
+func (h *HandlerSet) HandleStoreLoginAndPassword(w http.ResponseWriter, req *http.Request) {
+
+	userID, err := h.handleAuthorizeUser(w, req)
+
+	if err != nil {
+		return
+	}
+
+	logopass, err := h.prepareLoginAndPasswordItem(w, req)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	err = h.database.InsertLogoPass(req.Context(), userID, *logopass)
+	if err != nil {
+		var keyExistsError *db.KeyExistsError
+		if errors.As(err, &keyExistsError) {
+			http.Error(w, "Key exists", http.StatusConflict)
+			return
+		}
+		fmt.Println(err.Error())
+		http.Error(w, "Something went wrong",
+			http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+}
+
 // HandleUpdateLoginAndPassword хендлер, обрабатывающий запрос на изменени данных, хранимых не сервере типа "логин-пароль"
 func (h *HandlerSet) HandleUpdateLoginAndPassword(w http.ResponseWriter, req *http.Request) {
 	userID, err := h.handleAuthorizeUser(w, req)
 	if err != nil {
 		http.Error(w, "Error authenticating",
 			http.StatusUnauthorized)
+		return
 	}
 	logopass, err := h.prepareLoginAndPasswordItem(w, req)
 	if err != nil {
@@ -172,6 +204,11 @@ func (h *HandlerSet) HandleUpdateLoginAndPassword(w http.ResponseWriter, req *ht
 	err = h.database.UpdateLogoPass(req.Context(), userID, *logopass)
 
 	if err != nil {
+		var keyNotFound *db.KeyNotFoundError
+		if errors.As(err, &keyNotFound) {
+			http.Error(w, "Not found", http.StatusNotFound)
+			return
+		}
 		fmt.Println(err.Error())
 		http.Error(w, "Could not update",
 			http.StatusInternalServerError)
@@ -183,47 +220,26 @@ func (h *HandlerSet) HandleUpdateLoginAndPassword(w http.ResponseWriter, req *ht
 func (h *HandlerSet) HandleUpdateCreditCard(w http.ResponseWriter, req *http.Request) {
 	userID, err := h.handleAuthorizeUser(w, req)
 	if err != nil {
-		http.Error(w, "Error authenticating",
-			http.StatusUnauthorized)
+		return
 	}
 	card, err := h.prepareCreditCardItem(w, req)
 	if err != nil {
+		fmt.Println(err.Error())
 		return
 	}
 	err = h.database.UpdateCreditCard(req.Context(), userID, *card)
 
 	if err != nil {
+		var keyNotFound *db.KeyNotFoundError
+		if errors.As(err, &keyNotFound) {
+			http.Error(w, "Not found", http.StatusNotFound)
+			return
+		}
 		fmt.Println(err.Error())
 		http.Error(w, "Could not update",
 			http.StatusInternalServerError)
 		return
 	}
-}
-
-//  HandleStoreLoginAndPassword хендлер, обрабатывающий запрос на сохранение на сервере данных типа "логин и пароль"
-func (h *HandlerSet) HandleStoreLoginAndPassword(w http.ResponseWriter, req *http.Request) {
-
-	userID, err := h.handleAuthorizeUser(w, req)
-
-	if err != nil {
-		http.Error(w, "Something went wrong",
-			http.StatusUnauthorized)
-	}
-
-	logopass, err := h.prepareLoginAndPasswordItem(w, req)
-	if err != nil {
-		return
-	}
-	err = h.database.InsertLogoPass(req.Context(), userID, *logopass)
-
-	if err != nil {
-		fmt.Println(err.Error())
-		http.Error(w, "Something went wrong",
-			http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusCreated)
 }
 
 // HandleUpdateText обрабатывает запрос на обновление текстовых данных, хранимых на сервере
@@ -234,6 +250,7 @@ func (h *HandlerSet) HandleUpdateText(w http.ResponseWriter, req *http.Request) 
 	if err != nil {
 		http.Error(w, "Something went wrong",
 			http.StatusUnauthorized)
+		return
 	}
 
 	text, err := h.prepareTextItem(w, req)
@@ -243,12 +260,18 @@ func (h *HandlerSet) HandleUpdateText(w http.ResponseWriter, req *http.Request) 
 	err = h.database.UpdateText(req.Context(), userID, *text)
 
 	if err != nil {
+		var keyNotFound *db.KeyNotFoundError
+		if errors.As(err, &keyNotFound) {
+			http.Error(w, "Not found", http.StatusNotFound)
+			return
+		}
 		fmt.Println(err.Error())
 		http.Error(w, "Something went wrong",
 			http.StatusInternalServerError)
 		return
 	}
 }
+
 // HandleStoreText обрабатывает запрос на создание текстовых данных для хранения на сервере
 func (h *HandlerSet) HandleStoreText(w http.ResponseWriter, req *http.Request) {
 
@@ -257,6 +280,7 @@ func (h *HandlerSet) HandleStoreText(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		http.Error(w, "Something went wrong",
 			http.StatusUnauthorized)
+		return
 	}
 
 	text, err := h.prepareTextItem(w, req)
@@ -266,6 +290,11 @@ func (h *HandlerSet) HandleStoreText(w http.ResponseWriter, req *http.Request) {
 	err = h.database.InsertText(req.Context(), userID, *text)
 
 	if err != nil {
+		var keyExistsError *db.KeyExistsError
+		if errors.As(err, &keyExistsError) {
+			http.Error(w, "Key exists", http.StatusConflict)
+			return
+		}
 		fmt.Println(err.Error())
 		http.Error(w, "Something went wrong",
 			http.StatusInternalServerError)
@@ -283,6 +312,7 @@ func (h *HandlerSet) HandleStoreCreditCard(w http.ResponseWriter, req *http.Requ
 	if err != nil {
 		http.Error(w, "Something went wrong",
 			http.StatusUnauthorized)
+		return
 	}
 
 	card, err := h.prepareCreditCardItem(w, req)
@@ -292,6 +322,11 @@ func (h *HandlerSet) HandleStoreCreditCard(w http.ResponseWriter, req *http.Requ
 	err = h.database.InsertCreditCard(req.Context(), userID, *card)
 
 	if err != nil {
+		var keyExistsError *db.KeyExistsError
+		if errors.As(err, &keyExistsError) {
+			http.Error(w, "Key exists", http.StatusConflict)
+			return
+		}
 		fmt.Println(err.Error())
 		http.Error(w, "Something went wrong",
 			http.StatusInternalServerError)
@@ -309,6 +344,7 @@ func (h *HandlerSet) HandleStoreBinaryItem(w http.ResponseWriter, req *http.Requ
 	if err != nil {
 		http.Error(w, "Something went wrong",
 			http.StatusUnauthorized)
+		return
 	}
 
 	item, err := h.prepareBinaryItem(w, req)
@@ -318,8 +354,12 @@ func (h *HandlerSet) HandleStoreBinaryItem(w http.ResponseWriter, req *http.Requ
 	}
 
 	err = h.database.InsertBinaryData(req.Context(), userID, *item)
-
 	if err != nil {
+		var keyExistsError *db.KeyExistsError
+		if errors.As(err, &keyExistsError) {
+			http.Error(w, "Key exists", http.StatusConflict)
+			return
+		}
 		fmt.Println(err.Error())
 		http.Error(w, "Something went wrong",
 			http.StatusInternalServerError)
@@ -336,6 +376,7 @@ func (h *HandlerSet) HandleUpdateBinaryItem(w http.ResponseWriter, req *http.Req
 	if err != nil {
 		http.Error(w, "Something went wrong",
 			http.StatusUnauthorized)
+		return
 	}
 
 	item, err := h.prepareBinaryItem(w, req)
@@ -347,6 +388,11 @@ func (h *HandlerSet) HandleUpdateBinaryItem(w http.ResponseWriter, req *http.Req
 	err = h.database.UpdateBinaryData(req.Context(), userID, *item)
 
 	if err != nil {
+		var keyNotFound *db.KeyNotFoundError
+		if errors.As(err, &keyNotFound) {
+			http.Error(w, "Not found", http.StatusNotFound)
+			return
+		}
 		fmt.Println(err.Error())
 		http.Error(w, "Something went wrong",
 			http.StatusInternalServerError)
@@ -363,6 +409,7 @@ func (h *HandlerSet) HandleDownloadBinaryItem(w http.ResponseWriter, req *http.R
 	if err != nil {
 		http.Error(w, "Something went wrong",
 			http.StatusUnauthorized)
+		return
 	}
 
 	idString := req.PathValue("key")
@@ -402,6 +449,7 @@ func (h *HandlerSet) HandleItemList(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		http.Error(w, "Something went wrong",
 			http.StatusUnauthorized)
+		return
 	}
 	s := req.URL.Query().Get("page")
 
@@ -461,6 +509,7 @@ func (h *HandlerSet) HandleGetItem(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		http.Error(w, "Something went wrong",
 			http.StatusUnauthorized)
+		return
 	}
 
 	idString := req.PathValue("key")
@@ -548,6 +597,7 @@ func (h *HandlerSet) HandleGetItem(w http.ResponseWriter, req *http.Request) {
 			http.StatusInternalServerError)
 	}
 }
+
 // HandleDeleteItem удаляет данные с сервера
 func (h *HandlerSet) HandleDeleteItem(w http.ResponseWriter, req *http.Request) {
 
@@ -556,6 +606,7 @@ func (h *HandlerSet) HandleDeleteItem(w http.ResponseWriter, req *http.Request) 
 	if err != nil {
 		http.Error(w, "Something went wrong",
 			http.StatusUnauthorized)
+		return
 	}
 
 	idString := req.PathValue("key")
@@ -679,7 +730,7 @@ func (h *HandlerSet) handleAuthorizeUser(w http.ResponseWriter, req *http.Reques
 	username, ok := auth.GetAuthenticatedUser(req)
 	if !ok {
 		http.Error(w, "Something went wrong",
-			http.StatusInternalServerError)
+			http.StatusUnauthorized)
 		return 0, fmt.Errorf("authentication error")
 	}
 

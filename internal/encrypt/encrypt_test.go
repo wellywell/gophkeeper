@@ -17,9 +17,9 @@ func TestEncrypt(t *testing.T) {
 		want    string
 		wantErr bool
 	}{
-		{"encrypt",args{"текст", "secret"}, "3xTEJ/wSsD9FGA==", false},
-		{"empty",args{"", "secret"}, "", false},
-		{"empty secret",args{"текст", ""}, "xXbwKfNOD++P0w==", false},
+		{"encrypt", args{"текст", "secret"}, "3xTEJ/wSsD9FGA==", false},
+		{"empty", args{"", "secret"}, "", false},
+		{"empty secret", args{"текст", ""}, "xXbwKfNOD++P0w==", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -46,9 +46,9 @@ func TestEncryptBytes(t *testing.T) {
 		want    []byte
 		wantErr bool
 	}{
-		{"encrypt",args{[]byte("a"), "secret"}, []byte{byte(111)}, false},
-		{"empty",args{[]byte{}, "secret"}, []byte{}, false},
-		{"empty secret",args{[]byte("a"), ""}, []byte{byte(117)}, false},
+		{"encrypt", args{[]byte("a"), "secret"}, []byte{byte(111)}, false},
+		{"empty", args{[]byte{}, "secret"}, []byte{}, false},
+		{"empty secret", args{[]byte("a"), ""}, []byte{byte(117)}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -75,9 +75,9 @@ func TestDecrypt(t *testing.T) {
 		want    string
 		wantErr bool
 	}{
-		{"decrypt",args{"3xTEJ/wSsD9FGA==", "secret"}, "текст", false},
-		{"empty",args{"", "secret"}, "", false},
-		{"empty secret",args{"xXbwKfNOD++P0w==", ""}, "текст", false},
+		{"decrypt", args{"3xTEJ/wSsD9FGA==", "secret"}, "текст", false},
+		{"empty", args{"", "secret"}, "", false},
+		{"empty secret", args{"xXbwKfNOD++P0w==", ""}, "текст", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -105,8 +105,8 @@ func TestDecryptBytes(t *testing.T) {
 		wantErr bool
 	}{
 		{"decrypt", args{[]byte{byte(111)}, "secret"}, []byte("a"), false},
-		{"empty",args{[]byte{}, "secret"}, []byte{}, false},
-		{"empty secret",args{[]byte{byte(117)}, ""}, []byte("a"), false},
+		{"empty", args{[]byte{}, "secret"}, []byte{}, false},
+		{"empty secret", args{[]byte{byte(117)}, ""}, []byte("a"), false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

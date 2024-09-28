@@ -56,6 +56,7 @@ func MainMenu(token string, pass string, cli *client.Client) {
 		}
 	}
 }
+
 // Authenticate аутентификация пользователя - авторизация существующего, либо регистрация нового
 func Authenticate(cli *client.Client) (string, string, error) {
 	authMethod, err := prompt.ChooseLoginOrRegister()

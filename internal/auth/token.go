@@ -12,6 +12,7 @@ type Claims struct {
 	jwt.RegisteredClaims
 	Username string
 }
+
 // AuthHeader название заголовка для передачи токена
 const AuthHeader = "X-Auth-Token"
 
@@ -27,6 +28,7 @@ func VerifyUser(r *http.Request, secret []byte) (string, error) {
 	}
 	return "", fmt.Errorf("no auth token")
 }
+
 // BuildJWTString создаёт JWT-токен, содержащий имя пользователя
 func BuildJWTString(user string, secret []byte) (string, error) {
 
@@ -43,6 +45,7 @@ func BuildJWTString(user string, secret []byte) (string, error) {
 
 	return tokenString, nil
 }
+
 // GetUser парсит токен, проверяет его подпись и извлекает имя пользователя
 func GetUser(tokenString string, secret []byte) (string, error) {
 	claims := &Claims{}
@@ -63,6 +66,7 @@ func GetUser(tokenString string, secret []byte) (string, error) {
 
 	return claims.Username, nil
 }
+
 // SetToken устанавливает заголовк авторизации с токеном
 func SetToken(username string, w http.ResponseWriter, secret []byte) error {
 

@@ -300,6 +300,7 @@ func (d *Database) UpdateLogoPass(ctx context.Context, userID int, data types.Lo
 	}
 	return nil
 }
+
 // UpdateCreditCard обвноляет данные кредитной карты
 func (d *Database) UpdateCreditCard(ctx context.Context, userID int, data types.CreditCardItem) error {
 	tx, err := d.pool.Begin(ctx)
@@ -334,6 +335,7 @@ func (d *Database) UpdateCreditCard(ctx context.Context, userID int, data types.
 	}
 	return nil
 }
+
 // UpdateBinaryData обновляет бинарные данные
 func (d *Database) UpdateBinaryData(ctx context.Context, userID int, data types.BinaryItem) error {
 	tx, err := d.pool.Begin(ctx)
@@ -368,6 +370,7 @@ func (d *Database) UpdateBinaryData(ctx context.Context, userID int, data types.
 	}
 	return nil
 }
+
 // UpdateText обновляет текстовые данные
 func (d *Database) UpdateText(ctx context.Context, userID int, data types.TextItem) error {
 	tx, err := d.pool.Begin(ctx)
@@ -402,6 +405,7 @@ func (d *Database) UpdateText(ctx context.Context, userID int, data types.TextIt
 	}
 	return nil
 }
+
 // DeleteItem удаляет данные из БД
 func (d *Database) DeleteItem(ctx context.Context, userID int, key string) error {
 	query := `
@@ -415,6 +419,7 @@ func (d *Database) DeleteItem(ctx context.Context, userID int, key string) error
 	}
 	return nil
 }
+
 // GetBinaryData достаёт бинарные данные из БД
 func (d *Database) GetBinaryData(ctx context.Context, userID int, key string) ([]byte, error) {
 
@@ -447,6 +452,7 @@ func (d *Database) GetBinaryData(ctx context.Context, userID int, key string) ([
 	}
 	return data, nil
 }
+
 // GetItem достаёт запись с метаданным из БД
 func (d *Database) GetItem(ctx context.Context, userID int, key string) (*types.Item, error) {
 	query := `
@@ -469,6 +475,7 @@ func (d *Database) GetItem(ctx context.Context, userID int, key string) (*types.
 	}
 	return &item, nil
 }
+
 // GetLogoPass достаёт данные типа "логин и пароль" из БД
 func (d *Database) GetLogoPass(ctx context.Context, itemID int) (*types.LoginPassword, error) {
 	query := `
@@ -488,6 +495,7 @@ func (d *Database) GetLogoPass(ctx context.Context, itemID int) (*types.LoginPas
 	}
 	return &item, nil
 }
+
 // GetCreditCard достаёт данные о кредитной карте из БД
 func (d *Database) GetCreditCard(ctx context.Context, itemID int) (*types.CreditCardData, error) {
 	query := `
@@ -509,6 +517,7 @@ func (d *Database) GetCreditCard(ctx context.Context, itemID int) (*types.Credit
 	item.ValidYear = strconv.Itoa(item.ValidDate.Year())
 	return &item, nil
 }
+
 // GetText достаёт текстовые данные из БД
 func (d *Database) GetText(ctx context.Context, itemID int) (*types.TextData, error) {
 	query := `
@@ -527,6 +536,7 @@ func (d *Database) GetText(ctx context.Context, itemID int) (*types.TextData, er
 	}
 	return &text, nil
 }
+
 // GetItems достаёт список объектов, хранимых в БД для данного пользователя
 func (d *Database) GetItems(ctx context.Context, userID int, limit int, offset int) ([]types.Item, error) {
 

@@ -145,7 +145,6 @@ func (l *LoginPassword) String() string {
 // TextData тип для хранения простых текстовых данных
 type TextData string
 
-
 // Encrypt зашифровывает данные перед отправкой на сервер
 func (t *TextData) Encrypt(key string) error {
 	enc, err := encrypt.Encrypt(string(*t), key)

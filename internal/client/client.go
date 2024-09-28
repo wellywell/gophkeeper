@@ -49,34 +49,42 @@ func NewClient(conf *config.ClientConfig) (*Client, error) {
 	}, nil
 
 }
+
 // Login авторизация пользователя на сервере и получение токена для последующих запросов
 func (c *Client) Login(login string, password string) (string, error) {
 	return c.getAuthToken(login, password, "login")
 }
+
 // Register регистрация пользователя на сервере и получение токена для последующих запросов
 func (c *Client) Register(login string, password string) (string, error) {
 	return c.getAuthToken(login, password, "register")
 }
+
 // CreateBinaryItem сохранение на сервере бинарных данных
 func (c *Client) CreateBinaryItem(data []byte, headers map[string]string) (*http.Response, error) {
 	return c.doRequest(fmt.Sprintf("https://%s/api/item/binary", c.address), http.MethodPost, data, headers)
 }
+
 // UpdateBinaryItem обновление бинарных данных, хранимых на сервере
 func (c *Client) UpdateBinaryItem(data []byte, headers map[string]string) (*http.Response, error) {
 	return c.doRequest(fmt.Sprintf("https://%s/api/item/binary", c.address), http.MethodPut, data, headers)
 }
+
 // CreateLoginPasswordItem сохранение на сервере данных типа "логин и пароль"
 func (c *Client) CreateLoginPasswordItem(data []byte, headers map[string]string) (*http.Response, error) {
 	return c.doRequest(fmt.Sprintf("https://%s/api/item/login_password", c.address), http.MethodPost, data, headers)
 }
+
 // CreateCreditCardItem сохранение на сервере данных кредитной карты
 func (c *Client) CreateCreditCardItem(data []byte, headers map[string]string) (*http.Response, error) {
 	return c.doRequest(fmt.Sprintf("https://%s/api/item/credit_card", c.address), http.MethodPost, data, headers)
 }
+
 // CreateTextItem сохранение на сервере текстовых данных
 func (c *Client) CreateTextItem(data []byte, headers map[string]string) (*http.Response, error) {
 	return c.doRequest(fmt.Sprintf("https://%s/api/item/text", c.address), http.MethodPost, data, headers)
 }
+
 // GetItem получение с сервера данных произвольного типа (из числа поддерживаемых)
 func (c *Client) GetItem(token string, key string) (data []byte, err error) {
 
@@ -95,6 +103,7 @@ func (c *Client) GetItem(token string, key string) (data []byte, err error) {
 	}
 	return bodyBytes, nil
 }
+
 // SeeRecords получение списка записей, хранимых на сервере
 func (c *Client) SeeRecords(token string, pass string, page int, pageSize int) ([]types.Item, error) {
 
@@ -119,6 +128,7 @@ func (c *Client) SeeRecords(token string, pass string, page int, pageSize int) (
 	}
 	return items, nil
 }
+
 // DownloadBinaryData cкачивание бинарных данных с сервера
 func (c *Client) DownloadBinaryData(token string, pass string, key string) (data []byte, err error) {
 	resp, err := c.doRequest(fmt.Sprintf("https://%s/api/item/binary/%s/download", c.address, key), http.MethodGet, nil, map[string]string{Token: token})
@@ -141,6 +151,7 @@ func (c *Client) DownloadBinaryData(token string, pass string, key string) (data
 	}
 	return result, nil
 }
+
 // DeleteItem удаление данных с сервера
 func (c *Client) DeleteItem(token string, key string) error {
 
@@ -159,14 +170,17 @@ func (c *Client) DeleteItem(token string, key string) error {
 	}
 	return nil
 }
+
 // UpdateLogoPassData обновление логина и пароля, хранимых на сервере
 func (c *Client) UpdateLogoPassData(data []byte, headers map[string]string) (*http.Response, error) {
 	return c.doRequest(fmt.Sprintf("https://%s/api/item/login_password", c.address), http.MethodPut, data, headers)
 }
+
 // UpdateCreditCardData обновление данных кредитной карты
 func (c *Client) UpdateCreditCardData(data []byte, headers map[string]string) (*http.Response, error) {
 	return c.doRequest(fmt.Sprintf("https://%s/api/item/credit_card", c.address), http.MethodPut, data, headers)
 }
+
 // UpdateTextData обновление текстовых данных
 func (c *Client) UpdateTextData(data []byte, headers map[string]string) (*http.Response, error) {
 	return c.doRequest(fmt.Sprintf("https://%s/api/item/text", c.address), http.MethodPut, data, headers)
@@ -194,6 +208,7 @@ func UpdateItem[T types.ItemData](token string, pass string, newItem types.Gener
 	}
 	return nil
 }
+
 // CreateItem обобщенный метод для сохранения на сервере данных типа T
 func CreateItem[T types.ItemData](token string, pass string, newItem types.GenericItem[T], method func([]byte, map[string]string) (*http.Response, error)) error {
 	resp, err := saveItem(token, pass, newItem, method)

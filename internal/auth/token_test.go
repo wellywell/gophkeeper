@@ -17,7 +17,7 @@ func TestVerifyUser(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		token string
+		token   string
 		want    string
 		wantErr bool
 	}{

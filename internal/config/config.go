@@ -24,14 +24,14 @@ type ServerConfig struct {
 	RunAddress  string `env:"RUN_ADDRESS"`
 	DatabaseDSN string `env:"DATABASE_URI"`
 	Secret      []byte
-	SSLCert string `env:"SSL_CERT_PATH"`
-	SSLKey string `env:"SSL_KEY_PATH"`
+	SSLCert     string `env:"SSL_CERT_PATH"`
+	SSLKey      string `env:"SSL_KEY_PATH"`
 }
 
 // ClientConfig структура с параметрами для клиента
 type ClientConfig struct {
 	ServerAddress string `env:"SERVER_ADDRESS"`
-	SSLKey string `env:"CA_KEY"`
+	SSLKey        string `env:"CA_KEY"`
 }
 
 // NewServerConfig конструктор для создания конфига сервера

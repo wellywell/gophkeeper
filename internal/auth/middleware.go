@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 )
 
@@ -11,15 +10,15 @@ type AuthenticateMiddleware struct {
 	Secret []byte
 }
 
-type key string
+// UserKey ключ для хранения в контексте запроса имени пользователя
+type UserKey string
 
-const contextKey key = "username"
+const contextKey UserKey = "username"
+
 // Handle хедер, проверяющий токен юзера и сохраняющий в контексте запроса юзернейм
 func (m AuthenticateMiddleware) Handle(next http.Handler) http.Handler {
 
 	authenticate := func(w http.ResponseWriter, r *http.Request) {
-
-		fmt.Println("auth func")
 
 		user, err := VerifyUser(r, m.Secret)
 		if err != nil {
@@ -34,6 +33,7 @@ func (m AuthenticateMiddleware) Handle(next http.Handler) http.Handler {
 	}
 	return http.HandlerFunc(authenticate)
 }
+
 // GetAuthenticatedUser получает имя пользователя из контекста запроса
 func GetAuthenticatedUser(req *http.Request) (string, bool) {
 	user, ok := req.Context().Value(contextKey).(string)

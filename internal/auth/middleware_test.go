@@ -14,9 +14,9 @@ func TestGetAuthenticatedUser(t *testing.T) {
 		req *http.Request
 	}
 
-    r := httptest.NewRequest(http.MethodGet, "/api/", nil)
+	r := httptest.NewRequest(http.MethodGet, "/api/", nil)
 
-	const contextKey key = "username"
+	const contextKey UserKey = "username"
 	ctx := context.WithValue(r.Context(), contextKey, "user")
 	rWithUser := r.WithContext(ctx)
 
@@ -42,20 +42,21 @@ func TestGetAuthenticatedUser(t *testing.T) {
 	}
 }
 
-type Mockhandler struct {}
+type Mockhandler struct{}
+
 func (h *Mockhandler) ServeHTTP(http.ResponseWriter, *http.Request) {}
 
-
-type TestMiddleWare struct{
-	t *testing.T
+type TestMiddleWare struct {
+	t            *testing.T
 	expectedUser string
-	expectedOk bool
+	expectedOk   bool
 }
+
 func (m TestMiddleWare) Handle(next http.Handler) http.Handler {
 
 	test := func(w http.ResponseWriter, r *http.Request) {
 
-		const contextKey key = "username"
+		const contextKey UserKey = "username"
 		user, ok := r.Context().Value(contextKey).(string)
 
 		assert.Equal(m.t, m.expectedUser, user)
@@ -65,7 +66,6 @@ func (m TestMiddleWare) Handle(next http.Handler) http.Handler {
 	}
 	return http.HandlerFunc(test)
 }
-
 
 func TestAuthenticateMiddleware_Handle(t *testing.T) {
 
@@ -87,13 +87,13 @@ func TestAuthenticateMiddleware_Handle(t *testing.T) {
 	handler := &Mockhandler{}
 
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		request *http.Request
+		name               string
+		fields             fields
+		args               args
+		request            *http.Request
 		expectedStatusCode int
-		expectedUser string
-		expextedUserOK bool
+		expectedUser       string
+		expextedUserOK     bool
 	}{
 		{"good request", fields{[]byte(secret)}, args{handler}, rWithToken, http.StatusOK, "user", true},
 		{"bad request", fields{[]byte(secret)}, args{handler}, r, http.StatusUnauthorized, "", false},
@@ -103,7 +103,7 @@ func TestAuthenticateMiddleware_Handle(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-            tm := TestMiddleWare{t, tt.expectedUser, tt.expextedUserOK}
+			tm := TestMiddleWare{t, tt.expectedUser, tt.expextedUserOK}
 			h := tm.Handle(tt.args.next)
 
 			m := AuthenticateMiddleware{
@@ -115,7 +115,7 @@ func TestAuthenticateMiddleware_Handle(t *testing.T) {
 			got.ServeHTTP(w, tt.request)
 
 			assert.Equal(t, w.Result().StatusCode, tt.expectedStatusCode)
-			
+
 		})
 	}
 }

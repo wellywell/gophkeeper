@@ -4,7 +4,6 @@ import (
 	"testing"
 )
 
-
 func TestCheckPasswordHash(t *testing.T) {
 	type args struct {
 		password string
