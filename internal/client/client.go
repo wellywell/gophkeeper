@@ -62,34 +62,33 @@ func (c *Client) Register(login string, password string) (string, error) {
 
 // CreateBinaryItem сохранение на сервере бинарных данных
 func (c *Client) CreateBinaryItem(data []byte, headers map[string]string) (*http.Response, error) {
-	fmt.Println(data)
-	return c.doRequest(fmt.Sprintf("https://%s/api/item/binary", c.address), http.MethodPost, data, headers)
+	return c.doRequest(fmt.Sprintf("%s/api/item/binary", c.address), http.MethodPost, data, headers)
 }
 
 // UpdateBinaryItem обновление бинарных данных, хранимых на сервере
 func (c *Client) UpdateBinaryItem(data []byte, headers map[string]string) (*http.Response, error) {
-	return c.doRequest(fmt.Sprintf("https://%s/api/item/binary", c.address), http.MethodPut, data, headers)
+	return c.doRequest(fmt.Sprintf("%s/api/item/binary", c.address), http.MethodPut, data, headers)
 }
 
 // CreateLoginPasswordItem сохранение на сервере данных типа "логин и пароль"
 func (c *Client) CreateLoginPasswordItem(data []byte, headers map[string]string) (*http.Response, error) {
-	return c.doRequest(fmt.Sprintf("https://%s/api/item/login_password", c.address), http.MethodPost, data, headers)
+	return c.doRequest(fmt.Sprintf("%s/api/item/login_password", c.address), http.MethodPost, data, headers)
 }
 
 // CreateCreditCardItem сохранение на сервере данных кредитной карты
 func (c *Client) CreateCreditCardItem(data []byte, headers map[string]string) (*http.Response, error) {
-	return c.doRequest(fmt.Sprintf("https://%s/api/item/credit_card", c.address), http.MethodPost, data, headers)
+	return c.doRequest(fmt.Sprintf("%s/api/item/credit_card", c.address), http.MethodPost, data, headers)
 }
 
 // CreateTextItem сохранение на сервере текстовых данных
 func (c *Client) CreateTextItem(data []byte, headers map[string]string) (*http.Response, error) {
-	return c.doRequest(fmt.Sprintf("https://%s/api/item/text", c.address), http.MethodPost, data, headers)
+	return c.doRequest(fmt.Sprintf("%s/api/item/text", c.address), http.MethodPost, data, headers)
 }
 
 // GetItem получение с сервера данных произвольного типа (из числа поддерживаемых)
 func (c *Client) GetItem(token string, key string) (data []byte, err error) {
 
-	resp, err := c.doRequest(fmt.Sprintf("https://%s/api/item/%s", c.address, key), http.MethodGet, nil, map[string]string{Token: token})
+	resp, err := c.doRequest(fmt.Sprintf("%s/api/item/%s", c.address, key), http.MethodGet, nil, map[string]string{Token: token})
 	if err != nil {
 		return nil, fmt.Errorf("could not make request %w", err)
 	}
@@ -108,7 +107,7 @@ func (c *Client) GetItem(token string, key string) (data []byte, err error) {
 // SeeRecords получение списка записей, хранимых на сервере
 func (c *Client) SeeRecords(token string, pass string, page int, pageSize int) ([]types.Item, error) {
 
-	resp, err := c.doRequest(fmt.Sprintf("https://%s/api/item/list?page=%d&limit=%d", c.address, page, pageSize), http.MethodGet, nil, map[string]string{Token: token})
+	resp, err := c.doRequest(fmt.Sprintf("%s/api/item/list?page=%d&limit=%d", c.address, page, pageSize), http.MethodGet, nil, map[string]string{Token: token})
 	if err != nil {
 		return nil, fmt.Errorf("could not make request %w", err)
 	}
@@ -132,7 +131,7 @@ func (c *Client) SeeRecords(token string, pass string, page int, pageSize int) (
 
 // DownloadBinaryData cкачивание бинарных данных с сервера
 func (c *Client) DownloadBinaryData(token string, pass string, key string) (data []byte, err error) {
-	resp, err := c.doRequest(fmt.Sprintf("https://%s/api/item/binary/%s/download", c.address, key), http.MethodGet, nil, map[string]string{Token: token})
+	resp, err := c.doRequest(fmt.Sprintf("%s/api/item/binary/%s/download", c.address, key), http.MethodGet, nil, map[string]string{Token: token})
 	if err != nil {
 		return nil, fmt.Errorf("could not make request %w", err)
 	}
@@ -156,7 +155,7 @@ func (c *Client) DownloadBinaryData(token string, pass string, key string) (data
 // DeleteItem удаление данных с сервера
 func (c *Client) DeleteItem(token string, key string) error {
 
-	resp, err := c.doRequest(fmt.Sprintf("https://%s/api/item/%s", c.address, key), http.MethodDelete, nil, map[string]string{Token: token})
+	resp, err := c.doRequest(fmt.Sprintf("%s/api/item/%s", c.address, key), http.MethodDelete, nil, map[string]string{Token: token})
 	if err != nil {
 		return fmt.Errorf("could not make request %w", err)
 	}
@@ -174,17 +173,17 @@ func (c *Client) DeleteItem(token string, key string) error {
 
 // UpdateLogoPassData обновление логина и пароля, хранимых на сервере
 func (c *Client) UpdateLogoPassData(data []byte, headers map[string]string) (*http.Response, error) {
-	return c.doRequest(fmt.Sprintf("https://%s/api/item/login_password", c.address), http.MethodPut, data, headers)
+	return c.doRequest(fmt.Sprintf("%s/api/item/login_password", c.address), http.MethodPut, data, headers)
 }
 
 // UpdateCreditCardData обновление данных кредитной карты
 func (c *Client) UpdateCreditCardData(data []byte, headers map[string]string) (*http.Response, error) {
-	return c.doRequest(fmt.Sprintf("https://%s/api/item/credit_card", c.address), http.MethodPut, data, headers)
+	return c.doRequest(fmt.Sprintf("%s/api/item/credit_card", c.address), http.MethodPut, data, headers)
 }
 
 // UpdateTextData обновление текстовых данных
 func (c *Client) UpdateTextData(data []byte, headers map[string]string) (*http.Response, error) {
-	return c.doRequest(fmt.Sprintf("https://%s/api/item/text", c.address), http.MethodPut, data, headers)
+	return c.doRequest(fmt.Sprintf("%s/api/item/text", c.address), http.MethodPut, data, headers)
 }
 
 // UpdateItem обобщенный метод для обновления данных типа T
@@ -248,7 +247,7 @@ func (c *Client) getAuthToken(login string, password string, method string) (str
 		return "", fmt.Errorf("could not serialize data")
 	}
 
-	resp, err := c.client.Post(fmt.Sprintf("https://%s/api/user/%s", c.address, method), "application/json", bytes.NewBuffer(request))
+	resp, err := c.client.Post(fmt.Sprintf("%s/api/user/%s", c.address, method), "application/json", bytes.NewBuffer(request))
 
 	if err != nil {
 		log.Fatal(err)
@@ -327,14 +326,11 @@ func saveBinaryItem[T types.BinaryData](token string, pass string, newItem types
 	}
 	writer.Close()
 
-	fmt.Println(body.String())
-
 	headers := map[string]string{
 		"Content-Type":   fmt.Sprintf("multipart/related; boundary=%s", writer.Boundary()),
 		"Content-Length": fmt.Sprintf("%d", body.Len()),
 		Token:            token,
 	}
-	fmt.Println(headers)
 
 	return method(body.Bytes(), headers)
 }

@@ -84,7 +84,7 @@ func NewClientConfig() (*ClientConfig, error) {
 
 	var commandLineParams ClientConfig
 
-	flag.StringVar(&commandLineParams.ServerAddress, "s", "localhost:8080", "Server address")
+	flag.StringVar(&commandLineParams.ServerAddress, "s", "https://localhost:8080", "Server address")
 	flag.StringVar(&commandLineParams.SSLKey, "ssl", "../../.ssl/ca.key", "Path to certificate key")
 	flag.Parse()
 

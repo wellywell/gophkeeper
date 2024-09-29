@@ -2,50 +2,27 @@
 package config
 
 import (
-	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewServerConfig(t *testing.T) {
-	tests := []struct {
-		name    string
-		want    *ServerConfig
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewServerConfig()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NewServerConfig() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewServerConfig() = %v, want %v", got, tt.want)
-			}
-		})
-	}
+	got, err := NewServerConfig()
+	assert.NoError(t, err)
+
+	assert.Equal(t, "localhost:8080", got.RunAddress)
+	assert.Equal(t, "postgres://postgres@localhost:5432/postgres?sslmode=disable", got.DatabaseDSN)
+	assert.Equal(t, "../../.ssl/server.key", got.SSLKey)
+	assert.Equal(t, "../../.ssl/server.crt", got.SSLCert)
+
 }
 
 func TestNewClientConfig(t *testing.T) {
-	tests := []struct {
-		name    string
-		want    *ClientConfig
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewClientConfig()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NewClientConfig() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewClientConfig() = %v, want %v", got, tt.want)
-			}
-		})
-	}
+
+	got, err := NewClientConfig()
+	assert.NoError(t, err)
+
+	assert.Equal(t, "https://localhost:8080", got.ServerAddress)
+	assert.Equal(t, "../../.ssl/ca.key", got.SSLKey)
 }
