@@ -10,7 +10,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/wellywell/bonusy/internal/testutils"
+	"gotest.tools/assert"
+
+	"github.com/wellywell/gophkeeper/internal/testutils"
 )
 
 var DBDSN string
@@ -38,4 +40,13 @@ func runMain(m *testing.M) (int, error) {
 
 	return exitCode, nil
 
+}
+
+func TestNewDatabase(t *testing.T) {
+
+	d, err := NewDatabase(DBDSN)
+	assert.NilError(t, err)
+
+	err = d.Close()
+	assert.NilError(t, err)
 }

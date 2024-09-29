@@ -1,78 +1,34 @@
+// Package client содержит методы для создания http-запросов от клиента на сервер
 package client
 
 import (
-	"net/http"
 	"reflect"
 	"testing"
+
+	"github.com/wellywell/gophkeeper/internal/config"
 )
 
-func TestClient_Login(t *testing.T) {
-	type fields struct {
-		address string
-		client  *http.Client
-	}
+func TestNewClient(t *testing.T) {
 	type args struct {
-		login    string
-		password string
+		conf *config.ClientConfig
 	}
 	tests := []struct {
 		name    string
-		fields  fields
 		args    args
-		want    *http.Response
+		want    *Client
 		wantErr bool
 	}{
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &Client{
-				address: tt.fields.address,
-				client:  tt.fields.client,
-			}
-			got, err := c.Login(tt.args.login, tt.args.password)
+			got, err := NewClient(tt.args.conf)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Client.Login() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NewClient() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Client.Login() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestClient_Register(t *testing.T) {
-	type fields struct {
-		address string
-		client  *http.Client
-	}
-	type args struct {
-		login    string
-		password string
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    *http.Response
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := &Client{
-				address: tt.fields.address,
-				client:  tt.fields.client,
-			}
-			got, err := c.Register(tt.args.login, tt.args.password)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Client.Register() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Client.Register() = %v, want %v", got, tt.want)
+				t.Errorf("NewClient() = %v, want %v", got, tt.want)
 			}
 		})
 	}
