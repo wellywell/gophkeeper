@@ -117,7 +117,7 @@ func RunTestDatabase() (DSN string, cleanUp func(), err error) {
 		&dockertest.RunOptions{
 			Repository: "postgres",
 			Tag:        "15.3",
-			Name:       "test-bonusy-server",
+			Name:       "test-gophkeeper-server",
 			Env: []string{
 				"POSTGRES_USER=postgres",
 				"POSTGRES_PASSWORD=postgres",
